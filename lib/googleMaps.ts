@@ -5,7 +5,7 @@ interface Location {
   lng: number
 }
 
-interface Route {
+export interface Route {
   distance: {
     text: string
     value: number // in meters
