@@ -247,7 +247,7 @@ export async function chatWithOpenAI(
 - Weather: Get current weather information for their location or any city
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
-- Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). 
+- Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). IMPORTANT: The user's current location will be automatically used as the origin - you do NOT need to ask for location permission. If location is not available, the function will return an error, but you should still try to use it if the user asks for directions.
   CRITICAL FORMATTING RULES:
   - ALWAYS start your response with the travel time FIRST (e.g., "Boğaziçi Üniversitesi'ne yaklaşık 25 dakika sürer" or "En hızlı yol araba ile 30 dakika")
   - Then IMMEDIATELY mention traffic conditions:
