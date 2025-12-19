@@ -24,14 +24,15 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
   // Voice recognition
   const { isListening, isSupported: isVoiceSupported, toggleListening, stopListening } = useVoiceRecognition({
     onResult: (text) => {
-      // Replace input with new text (or append if you prefer)
-      setInput((prev) => {
-        // If there's existing text, append with space, otherwise replace
-        if (prev.trim() && !prev.endsWith(' ')) {
-          return prev + ' ' + text.trim()
-        }
-        return text.trim()
-      })
+      // Auto-submit after silence
+      if (text.trim()) {
+        setInput(text.trim())
+        // Auto-submit the message
+        setTimeout(() => {
+          onSendMessage(text.trim())
+          setInput('')
+        }, 100)
+      }
     },
     onError: (error) => {
       // Only log important errors - network errors are often transient
@@ -41,7 +42,9 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
       }
     },
     language: 'tr-TR',
-    continuous: true, // Keep listening until user manually stops it
+    continuous: false, // Don't keep listening - auto-stop after silence
+    silenceTimeout: 2000, // 2 seconds of silence before auto-stop
+    autoSubmit: true, // Auto-submit after silence
   })
 
   // Text-to-speech

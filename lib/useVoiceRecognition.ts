@@ -59,6 +59,8 @@ interface UseVoiceRecognitionOptions {
   onError?: (error: string) => void
   language?: string
   continuous?: boolean
+  silenceTimeout?: number // Auto-stop after silence (in milliseconds)
+  autoSubmit?: boolean // Automatically submit result after silence
 }
 
 export function useVoiceRecognition({
@@ -66,11 +68,16 @@ export function useVoiceRecognition({
   onError,
   language = 'tr-TR',
   continuous = false,
+  silenceTimeout = 2000, // Default 2 seconds
+  autoSubmit = true, // Auto-submit after silence
 }: UseVoiceRecognitionOptions) {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const isResolvedRef = useRef(false)
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const accumulatedTextRef = useRef<string>('')
+  const lastResultTimeRef = useRef<number>(0)
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -96,10 +103,16 @@ export function useVoiceRecognition({
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // Update last result time
+      lastResultTimeRef.current = Date.now()
+      
       // Get all results (including interim)
       const allTranscripts = Array.from(event.results)
         .map((result) => result[0].transcript)
         .join('')
+      
+      // Accumulate text
+      accumulatedTextRef.current = allTranscripts
       
       // Only process final results (when user pauses)
       const finalResults = Array.from(event.results)
@@ -111,12 +124,49 @@ export function useVoiceRecognition({
           .join('')
         
         if (finalTranscript.trim()) {
-          onResult(finalTranscript)
+          // Clear silence timeout
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current)
+            silenceTimeoutRef.current = null
+          }
+          
+          // If autoSubmit is enabled, submit immediately
+          if (autoSubmit) {
+            onResult(finalTranscript)
+            // Stop listening after submitting
+            if (recognitionRef.current) {
+              isResolvedRef.current = true
+              recognitionRef.current.stop()
+            }
+            return
+          } else {
+            onResult(finalTranscript)
+          }
         }
       }
       
-      // Don't stop automatically - let user control it with the button
-      // The recognition will continue listening until user stops it
+      // Reset silence timeout - if no speech for silenceTimeout ms, auto-stop
+      if (silenceTimeout > 0 && autoSubmit) {
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current)
+        }
+        
+        silenceTimeoutRef.current = setTimeout(() => {
+          // Check if we have accumulated text
+          const textToSubmit = accumulatedTextRef.current.trim()
+          if (textToSubmit && recognitionRef.current && isListening) {
+            console.log('🛑 Auto-stopping after silence, submitting:', textToSubmit)
+            isResolvedRef.current = true
+            recognitionRef.current.stop()
+            onResult(textToSubmit)
+          } else if (recognitionRef.current && isListening) {
+            // No text, just stop
+            console.log('🛑 Auto-stopping after silence (no text)')
+            isResolvedRef.current = true
+            recognitionRef.current.stop()
+          }
+        }, silenceTimeout)
+      }
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -183,15 +233,21 @@ export function useVoiceRecognition({
     recognitionRef.current = recognition
 
     return () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current)
+      }
       if (recognitionRef.current) {
         recognitionRef.current.stop()
       }
     }
-  }, [onResult, onError, language, continuous])
+  }, [onResult, onError, language, continuous, silenceTimeout, autoSubmit])
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
       try {
+        isResolvedRef.current = false
+        accumulatedTextRef.current = ''
+        lastResultTimeRef.current = Date.now()
         recognitionRef.current.start()
       } catch (error) {
         console.error('Error starting recognition:', error)
@@ -205,6 +261,10 @@ export function useVoiceRecognition({
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
       isResolvedRef.current = true // Prevent auto-restart
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current)
+        silenceTimeoutRef.current = null
+      }
       recognitionRef.current.stop()
       setIsListening(false)
     }
