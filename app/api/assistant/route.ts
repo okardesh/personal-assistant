@@ -30,30 +30,11 @@ export async function POST(request: NextRequest) {
     })
 
     // Use OpenAI for intelligent responses
-    const response = await chatWithOpenAI(messages, location)
-
-    // Parse response for Spotify actions
-    let spotifyAction = null
-    let cleanResponse = response
-    
-    try {
-      // Check if response contains Spotify action in function result format
-      // OpenAI might return: {"spotifyAction": {...}, "message": "..."}
-      const jsonMatch = response.match(/\{"spotifyAction":\s*\{[^}]+\}[^}]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        if (parsed.spotifyAction) {
-          spotifyAction = parsed.spotifyAction
-          cleanResponse = parsed.message || response.replace(jsonMatch[0], '').trim()
-        }
-      }
-    } catch (error) {
-      // Ignore parsing errors, use original response
-    }
+    const result = await chatWithOpenAI(messages, location)
 
     return NextResponse.json({ 
-      response: cleanResponse,
-      spotifyAction 
+      response: result.response,
+      spotifyAction: result.spotifyAction 
     })
   } catch (error) {
     console.error('Assistant API error:', error)

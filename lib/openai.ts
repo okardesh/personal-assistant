@@ -195,10 +195,12 @@ const functions = [
 export async function chatWithOpenAI(
   messages: Message[],
   location?: Location | null
-): Promise<string> {
+): Promise<{ response: string; spotifyAction?: any }> {
   if (!process.env.OPENAI_API_KEY) {
-    return 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.'
+    return { response: 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.' }
   }
+
+  let spotifyAction: any = null
 
   try {
     // Get current date and time
@@ -749,6 +751,11 @@ Note: Email body not retrieved, but provide information based on available detai
               }
             }
 
+            // Check if function result contains Spotify action
+            if (functionResult && functionResult.spotifyAction) {
+              spotifyAction = functionResult.spotifyAction
+            }
+
             // Ensure content is always a string
             const content = functionResult ? JSON.stringify(functionResult) : JSON.stringify({ error: 'No result' })
             toolResults.push({
@@ -826,6 +833,32 @@ Note: Email body not retrieved, but provide information based on available detai
               weather = await getWeather(location.latitude, location.longitude)
             }
             functionResult = weather ? { weather } : { error: 'Could not fetch weather' }
+          } else if (functionName === 'play_spotify_track') {
+            const query = functionArgs.query
+            if (!query) {
+              functionResult = { error: 'Search query is required' }
+            } else {
+              functionResult = { 
+                spotifyAction: {
+                  action: 'play',
+                  query: query,
+                },
+                message: `Searching for "${query}" on Spotify...`
+              }
+            }
+          } else if (functionName === 'control_spotify_playback') {
+            const action = functionArgs.action
+            if (!action) {
+              functionResult = { error: 'Action is required' }
+            } else {
+              functionResult = { 
+                spotifyAction: {
+                  action: 'control',
+                  control: action,
+                },
+                message: `Controlling Spotify: ${action}`
+              }
+            }
           }
 
           // Ensure content is always a string
@@ -853,20 +886,23 @@ Note: Email body not retrieved, but provide information based on available detai
           temperature: 0.7,
         })
 
-        return thirdResponse.choices[0].message.content || 'I processed your request, but got no response.'
+        return { 
+          response: thirdResponse.choices[0].message.content || 'I processed your request, but got no response.',
+          spotifyAction 
+        }
       }
 
       const responseContent = finalMessage.content
       if (responseContent) {
-        return responseContent
+        return { response: responseContent, spotifyAction }
       }
       
       // If no content, try to generate a response from the function results
       console.warn('OpenAI returned no content, generating fallback response')
-      return 'I processed your request, but got no response.'
+      return { response: 'I processed your request, but got no response.', spotifyAction }
     }
 
-    return message.content || 'I apologize, but I could not generate a response.'
+    return { response: message.content || 'I apologize, but I could not generate a response.' }
   } catch (error: any) {
     console.error('❌ OpenAI API error:', error)
     console.error('Error details:', {
@@ -878,24 +914,24 @@ Note: Email body not retrieved, but provide information based on available detai
     })
     
     if (error.message?.includes('API key')) {
-      return 'OpenAI API key is invalid or missing. Please check your configuration.'
+      return { response: 'OpenAI API key is invalid or missing. Please check your configuration.' }
     }
     
     if (error.status === 400) {
-      return 'Geçersiz istek. Lütfen mesajınızı kontrol edip tekrar deneyin.'
+      return { response: 'Geçersiz istek. Lütfen mesajınızı kontrol edip tekrar deneyin.' }
     }
     
     if (error.status === 429) {
-      return 'Çok fazla istek gönderildi. Lütfen birkaç saniye bekleyip tekrar deneyin.'
+      return { response: 'Çok fazla istek gönderildi. Lütfen birkaç saniye bekleyip tekrar deneyin.' }
     }
     
     if (error.status === 500 || error.status === 502 || error.status === 503) {
-      return 'Sunucu hatası oluştu. Lütfen birkaç saniye sonra tekrar deneyin.'
+      return { response: 'Sunucu hatası oluştu. Lütfen birkaç saniye sonra tekrar deneyin.' }
     }
     
     // More specific error messages
     const errorMessage = error.message || 'Bilinmeyen bir hata oluştu'
-    return `Üzgünüm, bir hata oluştu: ${errorMessage}. Lütfen tekrar deneyin. Eğer sorun devam ederse, lütfen farklı bir şekilde sorunuzu ifade edin.`
+    return { response: `Üzgünüm, bir hata oluştu: ${errorMessage}. Lütfen tekrar deneyin. Eğer sorun devam ederse, lütfen farklı bir şekilde sorunuzu ifade edin.` }
   }
 }
 
