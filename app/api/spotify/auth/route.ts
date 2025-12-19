@@ -14,9 +14,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Determine redirect URI - use production URL if available
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
-  const redirectUri = SPOTIFY_REDIRECT_URI || `${baseUrl}/api/spotify/callback`
+  // Get origin from request headers (server-side)
+  const origin = request.headers.get('origin') || 
+    request.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+    process.env.NEXT_PUBLIC_BASE_URL || 
+    'http://localhost:3000'
+  
+  const redirectUri = SPOTIFY_REDIRECT_URI || `${origin}/api/spotify/callback`
 
   console.log('🎵 Spotify auth - Redirect URI:', redirectUri)
 
