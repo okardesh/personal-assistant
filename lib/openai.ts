@@ -7,9 +7,21 @@ import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar
 import { fetchOutlookCalendarEvents, addOutlookCalendarEvent } from './outlookCalendar'
 import { searchNearbyEvents, searchGoogle } from './googleSearch'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialize OpenAI client to avoid build-time errors
+let openaiInstance: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set')
+    }
+    openaiInstance = new OpenAI({
+      apiKey: apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 interface Location {
   latitude: number
@@ -276,7 +288,7 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
       messagesWithSystem.splice(1, 0, locationContext)
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: messagesWithSystem as any,
       tools: functions.map(fn => ({
@@ -689,7 +701,7 @@ Note: Email body not retrieved, but provide information based on available detai
         ...toolResults,
       ]
 
-      const secondResponse = await openai.chat.completions.create({
+      const secondResponse = await getOpenAIClient().chat.completions.create({
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: functionMessages,
         tools: functions.map(fn => ({
@@ -767,7 +779,7 @@ Note: Email body not retrieved, but provide information based on available detai
           ...recursiveToolResults,
         ]
 
-        const thirdResponse = await openai.chat.completions.create({
+        const thirdResponse = await getOpenAIClient().chat.completions.create({
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
           messages: recursiveMessages,
           temperature: 0.7,
