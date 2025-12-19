@@ -227,7 +227,7 @@ export async function fetchAppleCalendarEvents(
       }
     }
 
-    // Calculate date range
+    // Calculate date range (use a single 'now' for the entire function)
     const now = new Date()
     let startDate: Date
     let endDate: Date
@@ -493,10 +493,10 @@ export async function fetchAppleCalendarEvents(
     console.log('📅 Total events found:', allEvents.length)
     const events = allEvents
 
-    // Filter events by period
+    // Filter events by period (reuse 'now' from above)
     console.log('📅 Total events before filtering:', events.length)
     console.log('📅 Period:', period)
-    const now = new Date()
+    // Reuse 'now' from the date range calculation above
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
     const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)
