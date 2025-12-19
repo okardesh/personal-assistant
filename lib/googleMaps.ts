@@ -14,6 +14,15 @@ export interface Route {
     text: string
     value: number // in seconds
   }
+  duration_base?: {
+    text: string
+    value: number // in seconds (without traffic)
+  }
+  duration_in_traffic?: {
+    text: string
+    value: number // in seconds (with traffic)
+  }
+  traffic_delay?: number // Traffic delay in seconds
   steps: Array<{
     distance: { text: string; value: number }
     duration: { text: string; value: number }
@@ -84,9 +93,16 @@ export async function getDirections(
     const route = data.routes[0]
     const leg = route.legs[0]
 
+    // Include both duration and duration_in_traffic for traffic analysis
+    const baseDuration = leg.duration
+    const trafficDuration = leg.duration_in_traffic || leg.duration
+
     return {
       distance: leg.distance,
-      duration: leg.duration_in_traffic || leg.duration,
+      duration: trafficDuration, // Use traffic duration as primary
+      duration_base: baseDuration, // Base duration without traffic
+      duration_in_traffic: trafficDuration, // Duration with traffic
+      traffic_delay: trafficDuration.value - baseDuration.value, // Traffic delay in seconds
       steps: leg.steps.map(step => ({
         distance: step.distance,
         duration: step.duration,

@@ -247,7 +247,15 @@ export async function chatWithOpenAI(
 - Weather: Get current weather information for their location or any city
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
-- Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). Always show the fastest route option and compare different transportation modes.
+- Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). 
+  CRITICAL FORMATTING RULES:
+  - ALWAYS start your response with the travel time FIRST (e.g., "Boğaziçi Üniversitesi'ne yaklaşık 25 dakika sürer" or "En hızlı yol araba ile 30 dakika")
+  - Then mention traffic conditions if available (compare duration vs duration_in_traffic to assess traffic)
+  - If duration_in_traffic is significantly longer than duration, mention heavy traffic
+  - If they're similar, mention normal/light traffic
+  - After stating time and traffic, provide route details
+  - Always show the fastest route option and compare different transportation modes
+  - Format: "📍 [Destination]'e [duration] sürer. [Traffic comment]. [Route details]"
 - General questions: Answer questions, have conversations, and provide helpful information
 - Google Search: Search Google for general information, sports matches, concerts, events, news, etc.
 
