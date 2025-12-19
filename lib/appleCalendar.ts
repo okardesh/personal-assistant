@@ -324,62 +324,107 @@ export async function fetchAppleCalendarEvents(
       console.log('📋 Calendar list response:', listData.substring(0, 2000))
       
       // Parse XML to extract calendar URLs with their display names and IDs
-      // Match pattern: <response><href>...</href><propstat><prop><displayname>...</displayname></prop></propstat></response>
-      const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/g
-      let responseMatch
+      // XML format: <response><href>...</href><propstat><prop><displayname>...</displayname></prop></propstat></response>
+      // Try multiple regex patterns to handle different XML formats
+      const responsePatterns = [
+        /<response[^>]*>([\s\S]*?)<\/response>/gi,
+        /<D:response[^>]*>([\s\S]*?)<\/D:response>/gi,
+      ]
+      
       const calendarMap = new Map<string, string>() // Map of displayname -> URL
       const calendarIdMap = new Map<string, string>() // Map of calendar ID -> URL
       
-      while ((responseMatch = responseRegex.exec(listData)) !== null) {
-        const responseContent = responseMatch[1]
-        
-        // Extract href
-        const hrefMatch = responseContent.match(/<D:href[^>]*>([^<]+)<\/D:href>/i) || 
-                         responseContent.match(/<href[^>]*>([^<]+)<\/href>/i)
-        if (!hrefMatch) continue
-        
-        const href = hrefMatch[1].trim()
-        const calendarHomePath = calendarHomeUrl.replace(/^https?:\/\/[^\/]+/, '')
-        
-        // Skip the calendar home URL itself
-        if (href === calendarHomeUrl || href === calendarHomePath || 
-            href === calendarHomePath.replace(/\/$/, '') || href === calendarHomePath + '/') {
-          continue
-        }
-        
-        // Extract displayname
-        const displayNameMatch = responseContent.match(/<D:displayname[^>]*>([^<]+)<\/D:displayname>/i) ||
-                                 responseContent.match(/<displayname[^>]*>([^<]+)<\/displayname>/i)
-        const displayName = displayNameMatch ? displayNameMatch[1].trim() : ''
-        
-        // Extract calendar ID from href (usually in the path or as a parameter)
-        // iCloud format: /269602925/calendars/79B62908-F278-47E3-94CB-4636FF1384CF/
-        const calendarIdMatch = href.match(/\/([A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12})\/?$/i)
-        const calendarId = calendarIdMatch ? calendarIdMatch[1].toUpperCase() : null
-        
-        // Make absolute URL if relative
-        let calendarUrl = href
-        if (calendarUrl.startsWith('/')) {
-          const urlObj = new URL(calendarHomeUrl)
-          calendarUrl = `${urlObj.protocol}//${urlObj.host}${calendarUrl}`
-        }
-        
-        // Filter out special calendars
-        const specialCalendars = ['inbox', 'notification', 'outbox', 'tasks']
-        const isSpecial = specialCalendars.some(special => 
-          calendarUrl.toLowerCase().includes(`/${special}/`) || 
-          displayName.toLowerCase().includes(special)
-        )
-        
-        if (!isSpecial) {
-          calendarMap.set(displayName, calendarUrl)
-          if (calendarId) {
-            calendarIdMap.set(calendarId, calendarUrl)
-            console.log(`📋 Found calendar: "${displayName}" (ID: ${calendarId}) -> ${calendarUrl}`)
+      for (const responseRegex of responsePatterns) {
+        let responseMatch
+        while ((responseMatch = responseRegex.exec(listData)) !== null) {
+          const responseContent = responseMatch[1]
+          
+          // Extract href - try multiple patterns
+          const hrefPatterns = [
+            /<href[^>]*>([^<]+)<\/href>/i,
+            /<D:href[^>]*>([^<]+)<\/D:href>/i,
+            /<href[^>]*xmlns[^>]*>([^<]+)<\/href>/i,
+          ]
+          
+          let href: string | null = null
+          for (const pattern of hrefPatterns) {
+            const hrefMatch = responseContent.match(pattern)
+            if (hrefMatch) {
+              href = hrefMatch[1].trim()
+              break
+            }
+          }
+          
+          if (!href) {
+            console.log('⚠️ No href found in response:', responseContent.substring(0, 200))
+            continue
+          }
+          
+          const calendarHomePath = calendarHomeUrl.replace(/^https?:\/\/[^\/]+/, '')
+          
+          // Skip the calendar home URL itself
+          if (href === calendarHomeUrl || href === calendarHomePath || 
+              href === calendarHomePath.replace(/\/$/, '') || href === calendarHomePath + '/') {
+            console.log('⏭️ Skipping calendar home URL:', href)
+            continue
+          }
+          
+          // Extract displayname - try multiple patterns
+          const displayNamePatterns = [
+            /<displayname[^>]*>([^<]+)<\/displayname>/i,
+            /<D:displayname[^>]*>([^<]+)<\/D:displayname>/i,
+            /<displayname[^>]*xmlns[^>]*>([^<]+)<\/displayname>/i,
+          ]
+          
+          let displayName = ''
+          for (const pattern of displayNamePatterns) {
+            const displayNameMatch = responseContent.match(pattern)
+            if (displayNameMatch) {
+              displayName = displayNameMatch[1].trim()
+              break
+            }
+          }
+          
+          // Extract calendar ID from href (usually in the path)
+          // iCloud format: /269602925/calendars/79B62908-F278-47E3-94CB-4636FF1384CF/
+          // Also handle lowercase: /269602925/calendars/285bb0dc-3c4a-4b0d-b8ee-8cebdca296b5/
+          const calendarIdMatch = href.match(/\/([A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12})\/?$/i)
+          const calendarId = calendarIdMatch ? calendarIdMatch[1].toUpperCase() : null
+          
+          // Check if this is a calendar (has <calendar> in resourcetype)
+          const hasCalendarType = /<calendar[^>]*\/?>/.test(responseContent) || 
+                                  /resourcetype[^>]*>[\s\S]*?<calendar/.test(responseContent)
+          
+          // Make absolute URL if relative
+          let calendarUrl = href
+          if (calendarUrl.startsWith('/')) {
+            const urlObj = new URL(calendarHomeUrl)
+            calendarUrl = `${urlObj.protocol}//${urlObj.host}${calendarUrl}`
+          }
+          
+          // Filter out special calendars and non-calendar collections
+          const specialCalendars = ['inbox', 'notification', 'outbox', 'tasks']
+          const isSpecial = specialCalendars.some(special => 
+            calendarUrl.toLowerCase().includes(`/${special}/`) || 
+            displayName.toLowerCase().includes(special)
+          )
+          
+          // Only add if it's a calendar (has calendar type) or has a calendar ID
+          if (!isSpecial && (hasCalendarType || calendarId)) {
+            calendarMap.set(displayName || `Calendar ${calendarId || 'Unknown'}`, calendarUrl)
+            if (calendarId) {
+              calendarIdMap.set(calendarId, calendarUrl)
+              console.log(`📋 Found calendar: "${displayName || 'Unnamed'}" (ID: ${calendarId}) -> ${calendarUrl}`)
+            } else {
+              console.log(`📋 Found calendar: "${displayName || 'Unnamed'}" -> ${calendarUrl}`)
+            }
           } else {
-            console.log(`📋 Found calendar: "${displayName}" -> ${calendarUrl}`)
+            console.log(`⏭️ Skipping non-calendar or special: "${displayName}" (hasCalendarType: ${hasCalendarType}, calendarId: ${calendarId})`)
           }
         }
+        
+        // If we found calendars, break
+        if (calendarMap.size > 0) break
       }
       
       // First try to find by ID (most reliable)
