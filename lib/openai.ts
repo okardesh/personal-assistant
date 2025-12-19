@@ -903,9 +903,9 @@ Note: Email body not retrieved, but provide information based on available detai
                 } else {
                   // Find the fastest route
                   const routeEntries = Object.entries(routes) as Array<[string, Route]>
-                  const fastestRoute = routeEntries.reduce((fastest, [mode, route]) => {
+                  const fastestRoute = routeEntries.reduce((fastest, [routeMode, route]) => {
                     if (!fastest || route.duration.value < fastest.route.duration.value) {
-                      return { mode, route }
+                      return { mode: routeMode, route }
                     }
                     return fastest
                   }, null as { mode: string; route: Route } | null)
