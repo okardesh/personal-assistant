@@ -317,15 +317,18 @@ export async function fetchAppleCalendarEvents(
     
     let calendarUrls: string[] = []
     const preferredCalendarName = process.env.APPLE_CALENDAR_NAME || 'Onur' // Default to "Onur" if not specified
+    const preferredCalendarId = process.env.APPLE_CALENDAR_ID || '79B62908-F278-47E3-94CB-4636FF1384CF' // Default to "Onur" calendar ID
+    
     if (listResponse.ok) {
       const listData = await listResponse.text()
       console.log('📋 Calendar list response:', listData.substring(0, 2000))
       
-      // Parse XML to extract calendar URLs with their display names
+      // Parse XML to extract calendar URLs with their display names and IDs
       // Match pattern: <response><href>...</href><propstat><prop><displayname>...</displayname></prop></propstat></response>
       const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/g
       let responseMatch
       const calendarMap = new Map<string, string>() // Map of displayname -> URL
+      const calendarIdMap = new Map<string, string>() // Map of calendar ID -> URL
       
       while ((responseMatch = responseRegex.exec(listData)) !== null) {
         const responseContent = responseMatch[1]
@@ -349,6 +352,11 @@ export async function fetchAppleCalendarEvents(
                                  responseContent.match(/<displayname[^>]*>([^<]+)<\/displayname>/i)
         const displayName = displayNameMatch ? displayNameMatch[1].trim() : ''
         
+        // Extract calendar ID from href (usually in the path or as a parameter)
+        // iCloud format: /269602925/calendars/79B62908-F278-47E3-94CB-4636FF1384CF/
+        const calendarIdMatch = href.match(/\/([A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12})\/?$/i)
+        const calendarId = calendarIdMatch ? calendarIdMatch[1].toUpperCase() : null
+        
         // Make absolute URL if relative
         let calendarUrl = href
         if (calendarUrl.startsWith('/')) {
@@ -365,22 +373,37 @@ export async function fetchAppleCalendarEvents(
         
         if (!isSpecial) {
           calendarMap.set(displayName, calendarUrl)
-          console.log(`📋 Found calendar: "${displayName}" -> ${calendarUrl}`)
+          if (calendarId) {
+            calendarIdMap.set(calendarId, calendarUrl)
+            console.log(`📋 Found calendar: "${displayName}" (ID: ${calendarId}) -> ${calendarUrl}`)
+          } else {
+            console.log(`📋 Found calendar: "${displayName}" -> ${calendarUrl}`)
+          }
         }
       }
       
-      // Prefer calendar with name matching preferredCalendarName
-      const preferredCalendar = Array.from(calendarMap.entries()).find(([name]) => 
-        name.toLowerCase().includes(preferredCalendarName.toLowerCase())
-      )
+      // First try to find by ID (most reliable)
+      const preferredCalendarById = preferredCalendarId ? calendarIdMap.get(preferredCalendarId.toUpperCase()) : null
       
-      if (preferredCalendar) {
-        console.log(`✅ Using preferred calendar: "${preferredCalendar[0]}"`)
-        calendarUrls = [preferredCalendar[1]]
+      if (preferredCalendarById) {
+        console.log(`✅ Using preferred calendar by ID "${preferredCalendarId}": ${preferredCalendarById}`)
+        calendarUrls = [preferredCalendarById]
       } else {
-        // If preferred calendar not found, use all calendars
-        calendarUrls = Array.from(calendarMap.values())
-        console.log(`⚠️ Preferred calendar "${preferredCalendarName}" not found, using all calendars`)
+        // Fallback: try to find by name
+        const preferredCalendar = Array.from(calendarMap.entries()).find(([name]) => 
+          name.toLowerCase().includes(preferredCalendarName.toLowerCase())
+        )
+        
+        if (preferredCalendar) {
+          console.log(`✅ Using preferred calendar by name "${preferredCalendar[0]}": ${preferredCalendar[1]}`)
+          calendarUrls = [preferredCalendar[1]]
+        } else {
+          // If preferred calendar not found, use all calendars
+          calendarUrls = Array.from(calendarMap.values())
+          console.log(`⚠️ Preferred calendar "${preferredCalendarName}" (ID: ${preferredCalendarId}) not found, using all calendars`)
+          console.log(`📋 Available calendars:`, Array.from(calendarMap.keys()))
+          console.log(`📋 Available calendar IDs:`, Array.from(calendarIdMap.keys()))
+        }
       }
       
       console.log('📋 Selected', calendarUrls.length, 'calendar(s):', calendarUrls)
