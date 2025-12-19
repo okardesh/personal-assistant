@@ -250,12 +250,14 @@ export async function chatWithOpenAI(
 - Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). 
   CRITICAL FORMATTING RULES:
   - ALWAYS start your response with the travel time FIRST (e.g., "Boğaziçi Üniversitesi'ne yaklaşık 25 dakika sürer" or "En hızlı yol araba ile 30 dakika")
-  - Then mention traffic conditions if available (compare duration vs duration_in_traffic to assess traffic)
-  - If duration_in_traffic is significantly longer than duration, mention heavy traffic
-  - If they're similar, mention normal/light traffic
-  - After stating time and traffic, provide route details
+  - Then IMMEDIATELY mention traffic conditions:
+    * If traffic_info.has_heavy_traffic is true: "Yoğun trafik var, normalden [X] dakika daha uzun sürebilir"
+    * If traffic_delay is 1-5 minutes: "Hafif trafik var"
+    * If traffic_delay is 0 or very small: "Trafik normal" or "Trafik yoğun değil"
+    * Compare base_duration vs traffic_duration to assess traffic impact
+  - After stating time and traffic, provide route details and alternative modes if faster
   - Always show the fastest route option and compare different transportation modes
-  - Format: "📍 [Destination]'e [duration] sürer. [Traffic comment]. [Route details]"
+  - Format: "📍 [Destination]'e [duration] sürer. [Traffic comment with delay info]. [Route details]"
 - General questions: Answer questions, have conversations, and provide helpful information
 - Google Search: Search Google for general information, sports matches, concerts, events, news, etc.
 
