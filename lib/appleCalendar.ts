@@ -393,13 +393,17 @@ export async function fetchAppleCalendarEvents(
       })
 
       if (!response.ok) {
-        console.warn('⚠️ CalDAV request failed for', calendarUrl, ':', response.status, response.statusText)
+        const errorText = await response.text().catch(() => 'Could not read error response')
+        console.error('❌ CalDAV request failed for', calendarUrl)
+        console.error('❌ Status:', response.status, response.statusText)
+        console.error('❌ Error response:', errorText.substring(0, 500))
         continue
       }
 
       const xmlData = await response.text()
       console.log('📅 Calendar response length:', xmlData.length)
-      console.log('📅 Calendar response (first 1000 chars):', xmlData.substring(0, 1000))
+      console.log('📅 Calendar response (first 2000 chars):', xmlData.substring(0, 2000))
+      console.log('📅 Calendar response (last 500 chars):', xmlData.substring(Math.max(0, xmlData.length - 500)))
       
       // Extract iCalendar data from XML response
       // Try multiple patterns to handle different XML formats
@@ -490,6 +494,31 @@ export async function fetchAppleCalendarEvents(
     const events = allEvents
 
     // Filter events by period
+    console.log('📅 Total events before filtering:', events.length)
+    console.log('📅 Period:', period)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)
+    
+    console.log('📅 Date range:', {
+      period,
+      today: today.toISOString(),
+      tomorrow: tomorrow.toISOString(),
+      weekEnd: weekEnd.toISOString(),
+      now: now.toISOString(),
+    })
+    
+    if (events.length > 0) {
+      console.log('📅 All events before filtering:', events.map(e => ({
+        title: e.title,
+        date: e.date,
+        time: e.time,
+        start: e.start?.toISOString(),
+        startDate: e.start?.toDateString(),
+      })))
+    }
+    
     const filteredEvents = events.filter(event => {
       const eventDate = event.start
       if (period === 'today') {
