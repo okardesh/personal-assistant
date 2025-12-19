@@ -13,7 +13,7 @@
    - https://developer.spotify.com/dashboard
    - "Create App" tıkla
    - App Name: "Personal Assistant"
-   - Redirect URI: `https://your-domain.vercel.app/api/auth/spotify/callback`
+   - Redirect URI: `https://your-domain.vercel.app/api/spotify/callback`
    - Client ID ve Client Secret al
 
 2. **Environment Variables:**

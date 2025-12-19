@@ -161,6 +161,35 @@ const functions = [
       required: ['title', 'startDateTime'],
     },
   },
+  {
+    name: 'play_spotify_track',
+    description: 'Play a song on Spotify. Use this when the user asks to play music, a song, or an artist (e.g., "Spotify\'da şarkı çal", "müzik aç", "play music", "play [song name]", "play [artist name]").',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The song name, artist name, or search query (e.g., "Shape of You", "Ed Sheeran", "jazz music")',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'control_spotify_playback',
+    description: 'Control Spotify playback (play, pause, next, previous, volume). Use this when the user asks to control music playback (e.g., "müziği durdur", "pause", "next song", "previous", "sesi aç", "volume up").',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['play', 'pause', 'next', 'previous', 'volume_up', 'volume_down'],
+          description: 'The playback action to perform',
+        },
+      },
+      required: ['action'],
+    },
+  },
 ]
 
 export async function chatWithOpenAI(
@@ -681,9 +710,37 @@ Note: Email body not retrieved, but provide information based on available detai
               functionResult = { error: error instanceof Error ? error.message : 'Failed to parse date/time' }
             }
           }
-              } else {
-                functionResult = { error: 'Unknown function' }
-              }
+        } else if (functionName === 'play_spotify_track') {
+          const query = functionArgs.query
+          if (!query) {
+            functionResult = { error: 'Search query is required' }
+          } else {
+            // Return Spotify action for client-side handling
+            functionResult = { 
+              spotifyAction: {
+                action: 'play',
+                query: query,
+              },
+              message: `Searching for "${query}" on Spotify...`
+            }
+          }
+        } else if (functionName === 'control_spotify_playback') {
+          const action = functionArgs.action
+          if (!action) {
+            functionResult = { error: 'Action is required' }
+          } else {
+            // Return Spotify action for client-side handling
+            functionResult = { 
+              spotifyAction: {
+                action: 'control',
+                control: action,
+              },
+              message: `Controlling Spotify: ${action}`
+            }
+          }
+        } else {
+          functionResult = { error: 'Unknown function' }
+        }
             } catch (functionError: any) {
               console.error(`❌ Error executing function ${functionName}:`, functionError)
               functionResult = { 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import ChatInterface from '@/components/ChatInterface'
 import { Message } from '@/types/chat'
 import { getClientLocation } from '@/lib/locationClient'
+import { useSpotify } from '@/lib/useSpotify'
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
@@ -14,6 +15,9 @@ export default function Home() {
       timestamp: new Date(),
     },
   ])
+
+  // Spotify integration
+  const spotify = useSpotify()
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -94,14 +98,72 @@ export default function Home() {
         role: 'assistant',
         content: data.response || 'I apologize, but I encountered an error processing your request.',
         timestamp: new Date(),
+        spotifyAction: data.spotifyAction, // Pass Spotify action to message
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+
+      // Handle Spotify actions
+      if (data.spotifyAction) {
+        handleSpotifyAction(data.spotifyAction)
+      }
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    }
+  }
+
+  const handleSpotifyAction = async (action: any) => {
+    if (!spotify.isAuthenticated) {
+      // Show message to authenticate
+      const authMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Spotify\'a bağlanmak için lütfen izin verin. Spotify Premium hesabınız olmalı.',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, authMessage])
+      await spotify.authenticate()
+      return
+    }
+
+    try {
+      if (action.action === 'play' && action.query) {
+        await spotify.searchAndPlay(action.query)
+      } else if (action.action === 'control') {
+        switch (action.control) {
+          case 'play':
+            await spotify.play()
+            break
+          case 'pause':
+            await spotify.pause()
+            break
+          case 'next':
+            await spotify.nextTrack()
+            break
+          case 'previous':
+            await spotify.previousTrack()
+            break
+          case 'volume_up':
+            // Get current volume and increase
+            await spotify.setVolume(75)
+            break
+          case 'volume_down':
+            await spotify.setVolume(25)
+            break
+        }
+      }
+    } catch (error) {
+      console.error('Spotify action error:', error)
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Spotify hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
