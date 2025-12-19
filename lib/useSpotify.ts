@@ -71,12 +71,21 @@ export function useSpotify() {
   const authenticate = async () => {
     try {
       const response = await fetch('/api/spotify/auth')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       if (data.authUrl) {
+        console.log('🎵 Redirecting to Spotify OAuth:', data.authUrl)
         window.location.href = data.authUrl
+      } else if (data.error) {
+        throw new Error(data.error)
+      } else {
+        throw new Error('No auth URL received from server')
       }
     } catch (error) {
       console.error('Error starting Spotify auth:', error)
+      throw error
     }
   }
 

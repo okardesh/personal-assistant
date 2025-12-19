@@ -124,11 +124,22 @@ export default function Home() {
       const authMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'Spotify\'a bağlanmak için lütfen izin verin. Spotify Premium hesabınız olmalı.',
+        content: 'Spotify\'a bağlanmak için Spotify hesabınızla giriş yapmanız gerekiyor. Spotify Premium hesabınız olmalı. Yönlendiriliyorsunuz...',
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, authMessage])
-      await spotify.authenticate()
+      
+      try {
+        await spotify.authenticate()
+      } catch (error) {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `Spotify bağlantı hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}. Lütfen tekrar deneyin.`,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      }
       return
     }
 

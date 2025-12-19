@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Determine redirect URI - use production URL if available
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+  const redirectUri = SPOTIFY_REDIRECT_URI || `${baseUrl}/api/spotify/callback`
+
+  console.log('🎵 Spotify auth - Redirect URI:', redirectUri)
+
   const scopes = [
     'user-read-playback-state',
     'user-modify-playback-state',
@@ -26,10 +33,11 @@ export async function GET(request: NextRequest) {
     response_type: 'code',
     client_id: SPOTIFY_CLIENT_ID,
     scope: scopes,
-    redirect_uri: SPOTIFY_REDIRECT_URI,
+    redirect_uri: redirectUri,
     state: Math.random().toString(36).substring(7), // Random state for security
   })}`
 
+  console.log('🎵 Spotify auth URL generated')
   return NextResponse.json({ authUrl })
 }
 
