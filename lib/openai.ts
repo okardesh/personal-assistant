@@ -6,6 +6,8 @@ import { getWeather, getWeatherByCity } from './weather'
 import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar'
 import { fetchOutlookCalendarEvents, addOutlookCalendarEvent } from './outlookCalendar'
 import { searchNearbyEvents, searchGoogle } from './googleSearch'
+import { getBestRoute, Route } from './googleMaps'
+import { getDirections, getBestRoute, searchPlace } from './googleMaps'
 
 // Lazy initialize OpenAI client to avoid build-time errors
 let openaiInstance: OpenAI | null = null
@@ -190,6 +192,25 @@ const functions = [
       required: ['action'],
     },
   },
+  {
+    name: 'get_directions',
+    description: 'Get directions to a place. Use this when the user asks how to get somewhere, travel time, or route information (e.g., "X\'e nasıl giderim", "X\'e ne kadar sürer", "X\'e gitmek için yol tarifi", "how to get to X", "directions to X").',
+    parameters: {
+      type: 'object',
+      properties: {
+        destination: {
+          type: 'string',
+          description: 'The destination place name or address (e.g., "Kadıköy", "Taksim Meydanı", "Istanbul Airport")',
+        },
+        mode: {
+          type: 'string',
+          enum: ['driving', 'walking', 'transit', 'bicycling'],
+          description: 'Transportation mode. Default: "driving". Use "walking" for short distances, "transit" for public transport, "bicycling" for bike routes.',
+        },
+      },
+      required: ['destination'],
+    },
+  },
 ]
 
 export async function chatWithOpenAI(
@@ -227,6 +248,7 @@ export async function chatWithOpenAI(
 - Weather: Get current weather information for their location or any city
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
+- Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). Always show the fastest route option and compare different transportation modes.
 - General questions: Answer questions, have conversations, and provide helpful information
 - Google Search: Search Google for general information, sports matches, concerts, events, news, etc.
 
@@ -857,6 +879,55 @@ Note: Email body not retrieved, but provide information based on available detai
                   control: action,
                 },
                 message: `Controlling Spotify: ${action}`
+              }
+            }
+          } else if (functionName === 'get_directions') {
+            const destination = functionArgs.destination
+            const mode = functionArgs.mode || 'driving'
+            
+            if (!destination) {
+              functionResult = { error: 'Destination is required' }
+            } else {
+              try {
+                // Use user's current location if available
+                const origin = location 
+                  ? { lat: location.latitude, lng: location.longitude }
+                  : 'current location'
+                
+                // Get best route with all modes to show fastest option
+                const routes = await getBestRoute(origin, destination)
+                
+                if (!routes || Object.keys(routes).length === 0) {
+                  functionResult = { 
+                    error: `Could not find route to "${destination}". Please check the destination name.` 
+                  }
+                } else {
+                  // Find the fastest route
+                  const routeEntries = Object.entries(routes)
+                  const fastestRoute = routeEntries.reduce((fastest, [mode, route]) => {
+                    if (!fastest || route.duration.value < fastest.duration.value) {
+                      return { mode, route }
+                    }
+                    return fastest
+                  }, null as { mode: string; route: Route } | null)
+                  
+                  functionResult = {
+                    destination,
+                    routes,
+                    fastest: fastestRoute ? {
+                      mode: fastestRoute.mode,
+                      duration: fastestRoute.route.duration.text,
+                      distance: fastestRoute.route.distance.text,
+                    } : null,
+                    selectedMode: mode,
+                    selectedRoute: routes[mode as keyof typeof routes] || null,
+                  }
+                }
+              } catch (error) {
+                console.error('Error getting directions:', error)
+                functionResult = { 
+                  error: error instanceof Error ? error.message : 'Failed to get directions' 
+                }
               }
             }
           }
