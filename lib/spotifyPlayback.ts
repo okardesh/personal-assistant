@@ -59,6 +59,11 @@ export class SpotifyWebPlayback {
           volume: 0.5,
         })
 
+        if (!this.player) {
+          reject(new Error('Failed to create Spotify player'))
+          return
+        }
+
         this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
           console.log('🎵 Spotify player ready with device ID:', device_id)
           this.deviceId = device_id
