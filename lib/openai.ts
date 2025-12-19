@@ -221,13 +221,18 @@ When adding events to calendar:
     When the user asks about their calendar, emails, or weather, use the appropriate function. For weather queries, use the user's location coordinates if available, otherwise ask for a city name or use the get_weather function with coordinates.
 
     When the user asks about emails or to summarize an email:
-    - CRITICAL: You MUST ALWAYS provide a summary of the email, even if the email body is not available
+    - CRITICAL RULE: You MUST NEVER say "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum" or "daha fazla bilgiye ulaşamıyorum" or any variation of this phrase
+    - CRITICAL RULE: You MUST NEVER say you cannot access email content - you ALWAYS have access to the snippet field
     - The email data will be provided in the "emails" array with a "snippet" field
-    - If the snippet contains "Email Details:" and "Note:", it means the email body could not be retrieved
-    - In that case, use the subject, from, and date information to create a meaningful summary
-    - NEVER say "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum" or similar messages
-    - ALWAYS create a summary based on available information (subject, sender, date)
-    - Example: "Bu email Özgü DOĞUÇ tarafından 18 Aralık 2025 tarihinde gönderilmiş. Konu: 'Fw: kitap hk.' (kitap hakkında). Email içeriği şu anda erişilebilir değil, ancak konu satırından kitap ile ilgili bir iletişim olduğu anlaşılıyor."
+    - The snippet contains the FULL email body text when available (can be 1000+ characters)
+    - CRITICAL: You MUST read and use the snippet content to create a detailed summary
+    - If the snippet is long (more than 100 characters), it contains the actual email body - READ IT CAREFULLY and USE IT
+    - If snippet contains "Email Details:" header, it means body wasn't retrieved, but you STILL have subject, sender, and date - USE THEM
+    - ALWAYS create a comprehensive summary based on the snippet content
+    - If snippet is short or contains metadata, still create a meaningful summary using subject, sender, and date
+    - Example good response: "LinkedIn'den gelen bu email, 6 yeni davetiyeniz olduğunu bildiriyor. Email içeriğinde Burak Cucu ve Göksan Kadayıfcı'nın katıldığı bir etkinlikte paylaştıkları bilgiler de yer alıyor."
+    - Example bad response (FORBIDDEN - NEVER DO THIS): "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum. Başka bir konuda yardımcı olabilir miyim?"
+    - If you see this phrase in your response, DELETE IT IMMEDIATELY and replace with a summary based on available information
 
     Email fetching logic:
     - When user asks about emails, first check for unread emails (up to 5)
@@ -378,7 +383,16 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                   })
                 }
                 hasUnread = false
-                console.log('📧 [OpenAI] Final email list', { count: emails.length, hasUnread })
+                console.log('📧 [OpenAI] Final email list', { 
+                  count: emails.length, 
+                  hasUnread,
+                  emails: emails.map(e => ({
+                    subject: e.subject,
+                    snippetLength: e.snippet?.length || 0,
+                    hasSnippet: !!e.snippet,
+                    snippetPreview: e.snippet?.substring(0, 200) || 'NO SNIPPET'
+                  }))
+                })
               }
             } catch (error) {
               console.error('📧 [OpenAI] Server-side: Error fetching emails', { error: error instanceof Error ? error.message : 'Unknown' })
@@ -500,11 +514,12 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                 } else {
                   console.warn('📧 [OpenAI] Email body is empty or null', { emailId: latestEmail.id })
                   // Always create a snippet with available info for summarization
-                  latestEmail.snippet = `EMAIL SUMMARY REQUESTED - Body not available
+                  latestEmail.snippet = `Email Details:
 Subject: ${latestEmail.subject}
 From: ${latestEmail.from}
 Date: ${latestEmail.date}
-IMPORTANT: Even though the email body could not be retrieved, you MUST create a summary based on the subject, sender, and date. The subject line "${latestEmail.subject}" and sender "${latestEmail.from}" provide enough context to create a meaningful summary. Do NOT say you cannot access the email content - instead, analyze what you can infer from the subject and sender.`
+
+Note: Email body text was not retrieved, but you MUST create a comprehensive summary based on the subject "${latestEmail.subject}" and sender "${latestEmail.from}". Analyze what you can infer from this information. NEVER say "daha fazla bilgiye ulaşamıyorum" or similar phrases.`
                 }
               } catch (error) {
                 console.error('📧 [OpenAI] ❌ Error fetching email body:', { 
@@ -513,11 +528,12 @@ IMPORTANT: Even though the email body could not be retrieved, you MUST create a 
                   emailId: latestEmail.id
                 })
                 // Fallback: use basic info with strong instruction
-                latestEmail.snippet = `EMAIL SUMMARY REQUESTED - Body fetch failed
+                latestEmail.snippet = `Email Details:
 Subject: ${latestEmail.subject}
 From: ${latestEmail.from}
 Date: ${latestEmail.date}
-IMPORTANT: Even though the email body could not be retrieved due to an error, you MUST create a summary based on the subject, sender, and date. The subject line "${latestEmail.subject}" and sender "${latestEmail.from}" provide enough context. Do NOT say you cannot access the email content - instead, analyze what you can infer from the subject and sender.`
+
+Note: Email body fetch encountered an error, but you MUST create a comprehensive summary based on the subject "${latestEmail.subject}" and sender "${latestEmail.from}". Analyze what you can infer from this information. NEVER say "daha fazla bilgiye ulaşamıyorum" or similar phrases.`
               }
             } else {
               console.warn('📧 [OpenAI] ⚠️ Email ID is missing, cannot fetch body', { 
@@ -527,11 +543,12 @@ IMPORTANT: Even though the email body could not be retrieved due to an error, yo
               })
               // Even without ID, create snippet for summary
               if (latestEmail && !latestEmail.snippet) {
-                latestEmail.snippet = `EMAIL SUMMARY REQUESTED - No ID available
+                latestEmail.snippet = `Email Details:
 Subject: ${latestEmail.subject}
 From: ${latestEmail.from}
 Date: ${latestEmail.date}
-IMPORTANT: Create a summary based on the subject "${latestEmail.subject}" and sender "${latestEmail.from}". Do NOT say you cannot access the email content.`
+
+Note: Email ID not available, but you MUST create a comprehensive summary based on the subject "${latestEmail.subject}" and sender "${latestEmail.from}". Analyze what you can infer from this information. NEVER say "daha fazla bilgiye ulaşamıyorum" or similar phrases.`
               }
             }
           } else {

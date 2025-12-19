@@ -434,16 +434,14 @@ export async function fetchICloudEmailBody(emailId: string): Promise<string | nu
                   bodyTimeout = null
                 }
                 
-                log('info', 'Email body parsed successfully', { 
-                  textLength: text.length,
-                  hasText: !!parsed.text,
-                  hasHtml: !!parsed.html,
-                  preview: text.substring(0, 100)
-                })
-                
                 // Only resolve after parsing is complete
                 if (text && text.length > 0) {
-                  log('info', 'Resolving with email body', { length: text.length })
+                  log('info', 'Email body parsed successfully, resolving', { 
+                    textLength: text.length,
+                    hasText: !!parsed.text,
+                    hasHtml: !!parsed.html,
+                    preview: text.substring(0, 100)
+                  })
                   safeResolve(text)
                 } else {
                   log('warn', 'Email body parsed but text is empty', { 
@@ -486,7 +484,7 @@ export async function fetchICloudEmailBody(emailId: string): Promise<string | nu
         })
 
         fetch.once('end', () => {
-          log('info', 'Email body fetch ended', { messageReceived, bodyReceived })
+          log('info', 'Email body fetch ended', { messageReceived })
           // Don't resolve here - wait for stream.once('end') async parsing to complete
           // Only resolve if no message was received at all
           if (!isResolved && !messageReceived) {

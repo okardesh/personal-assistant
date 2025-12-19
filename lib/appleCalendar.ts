@@ -129,7 +129,7 @@ export async function fetchAppleCalendarEvents(
           const patterns = [
             /<[^:]*:current-user-principal[^>]*><[^:]*:href[^>]*>([^<]+)<\/[^:]*:href><\/[^:]*:current-user-principal>/,
             /<current-user-principal[^>]*><href[^>]*>([^<]+)<\/href><\/current-user-principal>/,
-            /current-user-principal[^>]*>.*?<href[^>]*>([^<]+)<\/href>/s,
+            /current-user-principal[^>]*>[\s\S]*?<href[^>]*>([^<]+)<\/href>/,
           ]
           
           let found = false
@@ -182,7 +182,7 @@ export async function fetchAppleCalendarEvents(
           const homeSetPatterns = [
             /<[^:]*:calendar-home-set[^>]*><[^:]*:href[^>]*>([^<]+)<\/[^:]*:href><\/[^:]*:calendar-home-set>/,
             /<calendar-home-set[^>]*><href[^>]*>([^<]+)<\/href><\/calendar-home-set>/,
-            /calendar-home-set[^>]*>.*?<href[^>]*>([^<]+)<\/href>/s,
+            /calendar-home-set[^>]*>[\s\S]*?<href[^>]*>([^<]+)<\/href>/,
           ]
           
           let found = false
@@ -581,7 +581,7 @@ export async function addAppleCalendarEvent(params: AddEventParams): Promise<{ s
           const patterns = [
             /<[^:]*:current-user-principal[^>]*><[^:]*:href[^>]*>([^<]+)<\/[^:]*:href><\/[^:]*:current-user-principal>/,
             /<current-user-principal[^>]*><href[^>]*>([^<]+)<\/href><\/current-user-principal>/,
-            /current-user-principal[^>]*>.*?<href[^>]*>([^<]+)<\/href>/s,
+            /current-user-principal[^>]*>[\s\S]*?<href[^>]*>([^<]+)<\/href>/,
           ]
           
           let found = false
@@ -634,7 +634,7 @@ export async function addAppleCalendarEvent(params: AddEventParams): Promise<{ s
           const homeSetPatterns = [
             /<[^:]*:calendar-home-set[^>]*><[^:]*:href[^>]*>([^<]+)<\/[^:]*:href><\/[^:]*:calendar-home-set>/,
             /<calendar-home-set[^>]*><href[^>]*>([^<]+)<\/href><\/calendar-home-set>/,
-            /calendar-home-set[^>]*>.*?<href[^>]*>([^<]+)<\/href>/s,
+            /calendar-home-set[^>]*>[\s\S]*?<href[^>]*>([^<]+)<\/href>/,
           ]
           
           let found = false

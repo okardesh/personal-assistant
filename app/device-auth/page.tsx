@@ -150,7 +150,7 @@ export default function DeviceAuthPage() {
                 rel="noopener noreferrer"
                 className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Microsoft'a Git ve Kodu Gir
+                Microsoft&apos;a Git ve Kodu Gir
               </a>
             </div>
 
