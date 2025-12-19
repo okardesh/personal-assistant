@@ -1,0 +1,21 @@
+# Spotify Integration
+SPOTIFY_CLIENT_ID=a4d13b3109df45348832834a88891ec1
+SPOTIFY_CLIENT_SECRET=0f884b2d94394da59b4abe2ad0899188
+SPOTIFY_REDIRECT_URI=https://wiseass.ai/api/spotify/callback
+NEXT_PUBLIC_BASE_URL=https://wiseass.ai
+
+# Note: Add your other environment variables below
+# OPENAI_API_KEY=your-openai-key
+# APPLE_CALENDAR_USERNAME=your-apple-cal-username
+# APPLE_CALENDAR_PASSWORD=your-apple-cal-password
+# APPLE_CALENDAR_URL=your-apple-cal-url
+# OUTLOOK_CLIENT_ID=your-outlook-client-id
+# OUTLOOK_CLIENT_SECRET=your-outlook-client-secret
+# OUTLOOK_TENANT_ID=your-outlook-tenant-id
+# GOOGLE_CUSTOM_SEARCH_API_KEY=your-google-api-key
+# GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your-google-engine-id
+# OPENWEATHER_API_KEY=your-openweather-key
+# ICLOUD_IMAP_HOST=imap.mail.me.com
+# ICLOUD_IMAP_PORT=993
+# ICLOUD_EMAIL_USERNAME=your-icloud-email
+# ICLOUD_EMAIL_PASSWORD=your-icloud-password

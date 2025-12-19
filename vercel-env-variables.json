@@ -1,0 +1,6 @@
+{
+  "SPOTIFY_CLIENT_ID": "a4d13b3109df45348832834a88891ec1",
+  "SPOTIFY_CLIENT_SECRET": "0f884b2d94394da59b4abe2ad0899188",
+  "SPOTIFY_REDIRECT_URI": "https://wiseass.ai/api/spotify/callback",
+  "NEXT_PUBLIC_BASE_URL": "https://wiseass.ai"
+}

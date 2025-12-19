@@ -10,21 +10,27 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
 
+  // Get base URL from environment or request
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+    request.headers.get('origin') ||
+    request.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+    'http://localhost:3000'
+
   if (error) {
     return NextResponse.redirect(
-      new URL(`/?spotify_error=${encodeURIComponent(error)}`, request.url)
+      new URL(`/?spotify_error=${encodeURIComponent(error)}`, baseUrl)
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL('/?spotify_error=no_code', request.url)
+      new URL('/?spotify_error=no_code', baseUrl)
     )
   }
 
   if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
     return NextResponse.redirect(
-      new URL('/?spotify_error=not_configured', request.url)
+      new URL('/?spotify_error=not_configured', baseUrl)
     )
   }
 
@@ -47,7 +53,7 @@ export async function GET(request: NextRequest) {
       const errorData = await tokenResponse.text()
       console.error('Spotify token error:', errorData)
       return NextResponse.redirect(
-        new URL('/?spotify_error=token_failed', request.url)
+        new URL('/?spotify_error=token_failed', baseUrl)
       )
     }
 
@@ -60,13 +66,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL(
         `/?spotify_success=1&access_token=${tokenData.access_token}&refresh_token=${tokenData.refresh_token}&expires_in=${tokenData.expires_in}`,
-        request.url
+        baseUrl
       )
     )
   } catch (error) {
     console.error('Spotify callback error:', error)
     return NextResponse.redirect(
-      new URL('/?spotify_error=callback_failed', request.url)
+      new URL('/?spotify_error=callback_failed', baseUrl)
     )
   }
 }
