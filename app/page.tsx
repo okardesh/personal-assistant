@@ -30,6 +30,7 @@ export default function Home() {
     const needsLocation = lowerContent.includes('location') || 
                          lowerContent.includes('where am i') || 
                          lowerContent.includes('weather') ||
+                         lowerContent.includes('hava') ||
                          lowerContent.includes('nearby') ||
                          lowerContent.includes('etrafımda') ||
                          lowerContent.includes('çevremde') ||
@@ -39,18 +40,30 @@ export default function Home() {
 
     let location = null
     if (needsLocation) {
-      // Try to get location - this will prompt the user for permission
-      try {
-        console.log('📍 Requesting location permission...')
-        location = await getClientLocation()
-        if (location) {
-          console.log('✅ Location obtained:', location.latitude, location.longitude)
-        } else {
-          console.log('⚠️ Location permission denied or unavailable')
+      // Check if permission was previously denied
+      const permissionDenied = typeof window !== 'undefined' && 
+        localStorage.getItem('location-permission-denied') === 'true'
+      
+      if (!permissionDenied) {
+        // Try to get location - this will prompt the user for permission if needed
+        // If permission was previously granted, it will use cached location
+        try {
+          console.log('📍 Requesting location...')
+          // Force refresh if no cache exists to ensure permission prompt shows
+          const hasCache = typeof window !== 'undefined' && 
+            localStorage.getItem('personal-assistant-location') !== null
+          location = await getClientLocation(!hasCache)
+          if (location) {
+            console.log('✅ Location obtained:', location.latitude, location.longitude)
+          } else {
+            console.log('⚠️ Location not available')
+          }
+        } catch (error) {
+          console.error('❌ Location error:', error)
+          // Continue without location - OpenAI will handle it
         }
-      } catch (error) {
-        console.error('❌ Location error:', error)
-        // Continue without location - OpenAI will handle it
+      } else {
+        console.log('📍 Location permission was previously denied')
       }
     }
 

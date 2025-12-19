@@ -7,9 +7,38 @@ interface Location {
   address?: string
 }
 
-export async function getClientLocation(): Promise<Location | null> {
+const LOCATION_CACHE_KEY = 'personal-assistant-location'
+const LOCATION_CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
+
+interface CachedLocation extends Location {
+  timestamp: number
+}
+
+export async function getClientLocation(forceRefresh = false): Promise<Location | null> {
   if (typeof window === 'undefined') {
     return null
+  }
+
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cached = localStorage.getItem(LOCATION_CACHE_KEY)
+    if (cached) {
+      try {
+        const cachedLocation: CachedLocation = JSON.parse(cached)
+        const now = Date.now()
+        // Use cached location if it's less than 30 minutes old
+        if (now - cachedLocation.timestamp < LOCATION_CACHE_EXPIRY) {
+          console.log('📍 Using cached location')
+          return {
+            latitude: cachedLocation.latitude,
+            longitude: cachedLocation.longitude,
+            address: cachedLocation.address,
+          }
+        }
+      } catch (error) {
+        console.error('Error reading cached location:', error)
+      }
+    }
   }
 
   return new Promise((resolve) => {
@@ -25,6 +54,14 @@ export async function getClientLocation(): Promise<Location | null> {
           longitude: position.coords.longitude,
         }
 
+        // Cache the location
+        const cachedLocation: CachedLocation = {
+          ...location,
+          timestamp: Date.now(),
+        }
+        localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cachedLocation))
+        console.log('📍 Location obtained and cached:', location.latitude, location.longitude)
+
         // Optionally get address via reverse geocoding
         try {
           // You would use a geocoding service here
@@ -38,6 +75,15 @@ export async function getClientLocation(): Promise<Location | null> {
       },
       (error) => {
         console.error('Error getting location:', error)
+        // If permission was denied, remember it so we don't ask again
+        if (error.code === error.PERMISSION_DENIED) {
+          localStorage.setItem('location-permission-denied', 'true')
+          console.log('📍 Location permission denied by user')
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          console.log('📍 Location information unavailable')
+        } else if (error.code === error.TIMEOUT) {
+          console.log('📍 Location request timeout')
+        }
         resolve(null)
       },
       {
@@ -47,5 +93,12 @@ export async function getClientLocation(): Promise<Location | null> {
       }
     )
   })
+}
+
+export function hasLocationPermission(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  return localStorage.getItem('location-permission-denied') !== 'true'
 }
 

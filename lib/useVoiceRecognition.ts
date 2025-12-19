@@ -70,6 +70,7 @@ export function useVoiceRecognition({
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const isResolvedRef = useRef(false)
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -161,6 +162,22 @@ export function useVoiceRecognition({
 
     recognition.onend = () => {
       setIsListening(false)
+      // In Safari, onend might fire even when continuous=true
+      // Only restart if we're still supposed to be listening and user hasn't stopped it
+      if (continuous && recognitionRef.current && !isResolvedRef.current) {
+        // Small delay before restarting to avoid rapid restarts
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current && !isResolvedRef.current) {
+              console.log('🔄 Restarting speech recognition (continuous mode)')
+              recognitionRef.current.start()
+            }
+          } catch (error) {
+            // Ignore errors when restarting (might already be started)
+            console.log('Speech recognition restart:', error instanceof Error ? error.message : 'unknown')
+          }
+        }, 100)
+      }
     }
 
     recognitionRef.current = recognition
@@ -187,6 +204,7 @@ export function useVoiceRecognition({
 
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
+      isResolvedRef.current = true // Prevent auto-restart
       recognitionRef.current.stop()
       setIsListening(false)
     }
