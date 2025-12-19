@@ -224,6 +224,7 @@ export async function chatWithOpenAI(
 - Email: Check their inbox and unread emails, summarize emails when asked
 - Weather: Get current weather information for their location or any city
 - Location: You have access to the user's current location if they grant permission
+- Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
 - General questions: Answer questions, have conversations, and provide helpful information
 - Google Search: Search Google for general information, sports matches, concerts, events, news, etc.
 
