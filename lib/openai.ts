@@ -193,7 +193,7 @@ const functions = [
   },
   {
     name: 'get_directions',
-    description: 'Get directions to a place. Use this when the user asks how to get somewhere, travel time, or route information (e.g., "X\'e nasıl giderim", "X\'e ne kadar sürer", "X\'e gitmek için yol tarifi", "how to get to X", "directions to X").',
+    description: 'Get directions to a place. Use this when the user asks how to get somewhere, travel time, or route information (e.g., "X\'e nasıl giderim", "X\'e ne kadar sürer", "X\'e gitmek için yol tarifi", "how to get to X", "directions to X"). The user\'s current location will be automatically used as the origin if available. You do NOT need to ask for location - it will be provided automatically.',
     parameters: {
       type: 'object',
       properties: {
@@ -896,12 +896,14 @@ Note: Email body not retrieved, but provide information based on available detai
             
             if (!destination) {
               functionResult = { error: 'Destination is required' }
+            } else if (!location) {
+              functionResult = { error: 'Location is required for directions. Please enable location permissions.' }
             } else {
               try {
-                // Use user's current location if available
-                const origin = location 
-                  ? { lat: location.latitude, lng: location.longitude }
-                  : 'current location'
+                // Use user's current location
+                const origin = { lat: location.latitude, lng: location.longitude }
+                
+                console.log('📍 Getting directions from', origin, 'to', destination)
                 
                 // Get best route with all modes to show fastest option
                 const routes = await getBestRoute(origin, destination)
