@@ -288,29 +288,74 @@ export async function fetchAppleCalendarEvents(
     })
     
     let calendarUrls: string[] = []
+    const preferredCalendarName = process.env.APPLE_CALENDAR_NAME || 'Onur' // Default to "Onur" if not specified
     if (listResponse.ok) {
       const listData = await listResponse.text()
-      console.log('📋 Calendar list response:', listData.substring(0, 1000))
+      console.log('📋 Calendar list response:', listData.substring(0, 2000))
       
-      // Extract calendar URLs from response
-      // Look for <href> tags that are not the calendar home itself
-      const hrefRegex = /<href[^>]*>([^<]+)<\/href>/g
-      let match
-      while ((match = hrefRegex.exec(listData)) !== null) {
-        const href = match[1].trim()
-        // Skip the calendar home URL itself
+      // Parse XML to extract calendar URLs with their display names
+      // Match pattern: <response><href>...</href><propstat><prop><displayname>...</displayname></prop></propstat></response>
+      const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/g
+      let responseMatch
+      const calendarMap = new Map<string, string>() // Map of displayname -> URL
+      
+      while ((responseMatch = responseRegex.exec(listData)) !== null) {
+        const responseContent = responseMatch[1]
+        
+        // Extract href
+        const hrefMatch = responseContent.match(/<D:href[^>]*>([^<]+)<\/D:href>/i) || 
+                         responseContent.match(/<href[^>]*>([^<]+)<\/href>/i)
+        if (!hrefMatch) continue
+        
+        const href = hrefMatch[1].trim()
         const calendarHomePath = calendarHomeUrl.replace(/^https?:\/\/[^\/]+/, '')
-        if (href !== calendarHomeUrl && href !== calendarHomePath && href !== calendarHomePath.replace(/\/$/, '') && href !== calendarHomePath + '/') {
-          // Make absolute URL if relative
-          let calendarUrl = href
-          if (calendarUrl.startsWith('/')) {
-            const urlObj = new URL(calendarHomeUrl)
-            calendarUrl = `${urlObj.protocol}//${urlObj.host}${calendarUrl}`
-          }
-          calendarUrls.push(calendarUrl)
+        
+        // Skip the calendar home URL itself
+        if (href === calendarHomeUrl || href === calendarHomePath || 
+            href === calendarHomePath.replace(/\/$/, '') || href === calendarHomePath + '/') {
+          continue
+        }
+        
+        // Extract displayname
+        const displayNameMatch = responseContent.match(/<D:displayname[^>]*>([^<]+)<\/D:displayname>/i) ||
+                                 responseContent.match(/<displayname[^>]*>([^<]+)<\/displayname>/i)
+        const displayName = displayNameMatch ? displayNameMatch[1].trim() : ''
+        
+        // Make absolute URL if relative
+        let calendarUrl = href
+        if (calendarUrl.startsWith('/')) {
+          const urlObj = new URL(calendarHomeUrl)
+          calendarUrl = `${urlObj.protocol}//${urlObj.host}${calendarUrl}`
+        }
+        
+        // Filter out special calendars
+        const specialCalendars = ['inbox', 'notification', 'outbox', 'tasks']
+        const isSpecial = specialCalendars.some(special => 
+          calendarUrl.toLowerCase().includes(`/${special}/`) || 
+          displayName.toLowerCase().includes(special)
+        )
+        
+        if (!isSpecial) {
+          calendarMap.set(displayName, calendarUrl)
+          console.log(`📋 Found calendar: "${displayName}" -> ${calendarUrl}`)
         }
       }
-      console.log('📋 Found', calendarUrls.length, 'calendars:', calendarUrls)
+      
+      // Prefer calendar with name matching preferredCalendarName
+      const preferredCalendar = Array.from(calendarMap.entries()).find(([name]) => 
+        name.toLowerCase().includes(preferredCalendarName.toLowerCase())
+      )
+      
+      if (preferredCalendar) {
+        console.log(`✅ Using preferred calendar: "${preferredCalendar[0]}"`)
+        calendarUrls = [preferredCalendar[1]]
+      } else {
+        // If preferred calendar not found, use all calendars
+        calendarUrls = Array.from(calendarMap.values())
+        console.log(`⚠️ Preferred calendar "${preferredCalendarName}" not found, using all calendars`)
+      }
+      
+      console.log('📋 Selected', calendarUrls.length, 'calendar(s):', calendarUrls)
     } else {
       console.warn('⚠️ Failed to list calendars:', listResponse.status, listResponse.statusText)
       // Fallback: try calendar home directly
