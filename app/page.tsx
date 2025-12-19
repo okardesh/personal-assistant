@@ -42,13 +42,16 @@ export default function Home() {
                          lowerContent.includes('around me') ||
                          lowerContent.includes('near me') ||
                          lowerContent.includes('nasıl giderim') ||
+                         lowerContent.includes('nasıl gideerim') || // typo variant
                          lowerContent.includes('yol tarifi') ||
                          lowerContent.includes('directions') ||
                          lowerContent.includes('ne kadar sürer') ||
                          lowerContent.includes('how to get') ||
                          lowerContent.includes('gideceğinizi') ||
                          lowerContent.includes('gidebilirim') ||
-                         lowerContent.includes('ulaşabilirim')
+                         lowerContent.includes('ulaşabilirim') ||
+                         lowerContent.includes('gideerim') || // typo variant
+                         lowerContent.includes('gidebilir miyim')
 
     let location = null
     if (needsLocation) {
@@ -61,21 +64,37 @@ export default function Home() {
         // If permission was previously granted, it will use cached location
         try {
           console.log('📍 Requesting location...')
-          // Force refresh if no cache exists to ensure permission prompt shows
+          // Check if we have a valid cached location
           const hasCache = typeof window !== 'undefined' && 
             localStorage.getItem('personal-assistant-location') !== null
-          location = await getClientLocation(!hasCache)
+          
+          // For directions queries, always try to get fresh location if no cache
+          // This ensures the permission prompt appears if needed
+          const forceRefresh = !hasCache
+          console.log('📍 Force refresh:', forceRefresh, 'Has cache:', hasCache)
+          
+          location = await getClientLocation(forceRefresh)
           if (location) {
             console.log('✅ Location obtained:', location.latitude, location.longitude)
           } else {
-            console.log('⚠️ Location not available')
+            console.log('⚠️ Location not available - permission may be needed')
+            // If location is null, it might be because permission wasn't granted
+            // Clear the denied flag to allow retry
+            if (typeof window !== 'undefined') {
+              const denied = localStorage.getItem('location-permission-denied')
+              console.log('📍 Permission denied flag:', denied)
+            }
           }
         } catch (error) {
           console.error('❌ Location error:', error)
           // Continue without location - OpenAI will handle it
         }
       } else {
-        console.log('📍 Location permission was previously denied')
+        console.log('📍 Location permission was previously denied - clearing flag to allow retry')
+        // Clear the denied flag to allow user to try again
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('location-permission-denied')
+        }
       }
     }
 

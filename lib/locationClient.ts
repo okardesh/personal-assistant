@@ -43,9 +43,17 @@ export async function getClientLocation(forceRefresh = false): Promise<Location 
 
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
+      console.warn('📍 Geolocation API not available')
       resolve(null)
       return
     }
+
+    console.log('📍 Calling navigator.geolocation.getCurrentPosition...')
+    console.log('📍 Options:', {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: forceRefresh ? 0 : 300000, // 5 minutes if not forcing refresh
+    })
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -60,7 +68,9 @@ export async function getClientLocation(forceRefresh = false): Promise<Location 
           timestamp: Date.now(),
         }
         localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cachedLocation))
-        console.log('📍 Location obtained and cached:', location.latitude, location.longitude)
+        // Clear permission denied flag if we got location
+        localStorage.removeItem('location-permission-denied')
+        console.log('✅ Location obtained and cached:', location.latitude, location.longitude)
 
         // Optionally get address via reverse geocoding
         try {
@@ -74,22 +84,25 @@ export async function getClientLocation(forceRefresh = false): Promise<Location 
         resolve(location)
       },
       (error) => {
-        console.error('Error getting location:', error)
+        console.error('❌ Geolocation error:', error)
+        console.error('❌ Error code:', error.code)
+        console.error('❌ Error message:', error.message)
+        
         // If permission was denied, remember it so we don't ask again
         if (error.code === error.PERMISSION_DENIED) {
           localStorage.setItem('location-permission-denied', 'true')
-          console.log('📍 Location permission denied by user')
+          console.log('❌ Location permission denied by user')
         } else if (error.code === error.POSITION_UNAVAILABLE) {
-          console.log('📍 Location information unavailable')
+          console.log('⚠️ Location information unavailable')
         } else if (error.code === error.TIMEOUT) {
-          console.log('📍 Location request timeout')
+          console.log('⏱️ Location request timeout')
         }
         resolve(null)
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        timeout: 15000, // Increased timeout
+        maximumAge: forceRefresh ? 0 : 300000, // 5 minutes if not forcing refresh
       }
     )
   })
