@@ -918,6 +918,17 @@ Note: Email body not retrieved, but provide information based on available detai
                     return fastest
                   }, null as { mode: string; route: Route } | null)
                   
+                  // Calculate traffic info for fastest route
+                  const fastestTrafficInfo = fastestRoute && fastestRoute.route.traffic_delay 
+                    ? {
+                        delay_seconds: fastestRoute.route.traffic_delay,
+                        delay_minutes: Math.round(fastestRoute.route.traffic_delay / 60),
+                        has_heavy_traffic: fastestRoute.route.traffic_delay > 300, // More than 5 minutes
+                        base_duration: fastestRoute.route.duration_base?.text || fastestRoute.route.duration.text,
+                        traffic_duration: fastestRoute.route.duration.text,
+                      }
+                    : null
+
                   functionResult = {
                     destination,
                     routes,
@@ -925,6 +936,7 @@ Note: Email body not retrieved, but provide information based on available detai
                       mode: fastestRoute.mode,
                       duration: fastestRoute.route.duration.text,
                       distance: fastestRoute.route.distance.text,
+                      traffic_info: fastestTrafficInfo,
                     } : null,
                     selectedMode: mode,
                     selectedRoute: routes[mode as keyof typeof routes] || null,
