@@ -40,7 +40,15 @@ export default function Home() {
                          lowerContent.includes('çevremde') ||
                          lowerContent.includes('yakınımda') ||
                          lowerContent.includes('around me') ||
-                         lowerContent.includes('near me')
+                         lowerContent.includes('near me') ||
+                         lowerContent.includes('nasıl giderim') ||
+                         lowerContent.includes('yol tarifi') ||
+                         lowerContent.includes('directions') ||
+                         lowerContent.includes('ne kadar sürer') ||
+                         lowerContent.includes('how to get') ||
+                         lowerContent.includes('gideceğinizi') ||
+                         lowerContent.includes('gidebilirim') ||
+                         lowerContent.includes('ulaşabilirim')
 
     let location = null
     if (needsLocation) {
