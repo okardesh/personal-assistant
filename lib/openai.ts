@@ -861,6 +861,11 @@ Note: Email body not retrieved, but provide information based on available detai
             }
           }
 
+          // Check if function result contains Spotify action
+          if (functionResult && functionResult.spotifyAction) {
+            spotifyAction = functionResult.spotifyAction
+          }
+
           // Ensure content is always a string
           const content = functionResult ? JSON.stringify(functionResult) : JSON.stringify({ error: 'No result' })
           recursiveToolResults.push({
