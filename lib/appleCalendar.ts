@@ -370,10 +370,18 @@ export async function fetchAppleCalendarEvents(
     
     // Now query each calendar for events
     console.log('📅 Making CalDAV REPORT requests to', calendarUrls.length, 'calendar(s)')
+    console.log('📅 Calendar URLs:', JSON.stringify(calendarUrls, null, 2))
     const allEvents: CalendarEvent[] = []
     
     for (const calendarUrl of calendarUrls) {
       console.log('📅 Querying calendar:', calendarUrl)
+      console.log('📅 Calendar URL details:', {
+        url: calendarUrl,
+        period: period,
+        startDate: period === 'today' ? new Date().toISOString().split('T')[0] : 
+                   period === 'tomorrow' ? new Date(Date.now() + 86400000).toISOString().split('T')[0] : 
+                   'week',
+      })
       const response = await fetch(calendarUrl, {
         method: 'REPORT',
         headers: {
