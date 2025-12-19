@@ -216,7 +216,17 @@ When showing Google Search results for events, concerts, or activities:
 CURRENT DATE AND TIME:
 - Today's date: ${currentDate} (${currentDateISO})
 - Current time: ${currentTime}
-- Always use this current date and time when answering questions about dates, days, or time. Do NOT use your training data for date/time information.
+- Today is day ${now.getDay()} of the week (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)
+
+CRITICAL: When answering questions about dates and days of the week:
+- ALWAYS calculate the day of the week using the CURRENT DATE as reference
+- Use JavaScript Date object logic: new Date(year, month-1, day).getDay()
+- For example, to find what day December 22, 2025 is:
+  - Create a Date object: new Date(2025, 11, 22) // month is 0-indexed (11 = December)
+  - Use getDay() to get the day of week
+  - 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
+- NEVER guess or use outdated training data for date calculations
+- If you're unsure, calculate it step by step using the current date as reference
 
 IMPORTANT: 
 - Use get_calendar_events ONLY when the user explicitly mentions their personal calendar/appointments/meetings
