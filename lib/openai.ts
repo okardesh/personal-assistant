@@ -7,7 +7,6 @@ import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar
 import { fetchOutlookCalendarEvents, addOutlookCalendarEvent } from './outlookCalendar'
 import { searchNearbyEvents, searchGoogle } from './googleSearch'
 import { getBestRoute, Route } from './googleMaps'
-import { getDirections, getBestRoute, searchPlace } from './googleMaps'
 
 // Lazy initialize OpenAI client to avoid build-time errors
 let openaiInstance: OpenAI | null = null
