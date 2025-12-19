@@ -26,31 +26,50 @@ function parseICalendarDate(dateStr: string): Date {
 
 function parseICalendar(icalData: string): CalendarEvent[] {
   const events: CalendarEvent[] = []
-  const lines = icalData.split('\n')
+  const lines = icalData.split(/\r?\n/)
+  
+  console.log('📅 Parsing iCalendar data, total lines:', lines.length)
+  console.log('📅 First 20 lines:', lines.slice(0, 20).join('\n'))
   
   let currentEvent: any = null
   let inEvent = false
   
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
+    let line = lines[i].trim()
+    
+    // Handle line continuation (iCalendar uses space/tab for continuation)
+    while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
+      line += lines[i + 1].trim()
+      i++
+    }
     
     if (line === 'BEGIN:VEVENT') {
       inEvent = true
       currentEvent = {}
+      console.log('📅 Found BEGIN:VEVENT')
     } else if (line === 'END:VEVENT') {
       if (currentEvent && currentEvent.start) {
-        const startDate = parseICalendarDate(currentEvent.start)
-        const endDate = currentEvent.end ? parseICalendarDate(currentEvent.end) : undefined
-        
-        events.push({
-          title: currentEvent.summary || 'Untitled Event',
-          date: startDate.toISOString().split('T')[0],
-          time: startDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          calendar: 'personal',
-          start: startDate,
-          end: endDate,
-          location: currentEvent.location,
-        })
+        try {
+          const startDate = parseICalendarDate(currentEvent.start)
+          const endDate = currentEvent.end ? parseICalendarDate(currentEvent.end) : undefined
+          
+          const event = {
+            title: currentEvent.summary || 'Untitled Event',
+            date: startDate.toISOString().split('T')[0],
+            time: startDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+            calendar: 'personal' as const,
+            start: startDate,
+            end: endDate,
+            location: currentEvent.location,
+          }
+          
+          console.log('📅 Parsed event:', event.title, 'on', event.date, 'at', event.time)
+          events.push(event)
+        } catch (error) {
+          console.error('❌ Error parsing event:', error, 'Event data:', currentEvent)
+        }
+      } else {
+        console.warn('⚠️ Skipping event - missing start date. Event data:', currentEvent)
       }
       inEvent = false
       currentEvent = null
@@ -58,17 +77,26 @@ function parseICalendar(icalData: string): CalendarEvent[] {
       if (line.startsWith('SUMMARY:')) {
         currentEvent.summary = line.substring(8).trim()
       } else if (line.startsWith('DTSTART')) {
-        const dateStr = line.includes(':') ? line.split(':')[1] : lines[i + 1]?.trim()
-        if (dateStr) currentEvent.start = dateStr
+        // Handle DTSTART;VALUE=DATE:20240115 or DTSTART:20240115T120000Z
+        const dateStr = line.includes(':') ? line.split(':').slice(1).join(':') : lines[i + 1]?.trim()
+        if (dateStr) {
+          currentEvent.start = dateStr
+          console.log('📅 Found DTSTART:', dateStr)
+        }
       } else if (line.startsWith('DTEND')) {
-        const dateStr = line.includes(':') ? line.split(':')[1] : lines[i + 1]?.trim()
-        if (dateStr) currentEvent.end = dateStr
+        // Handle DTEND;VALUE=DATE:20240115 or DTEND:20240115T120000Z
+        const dateStr = line.includes(':') ? line.split(':').slice(1).join(':') : lines[i + 1]?.trim()
+        if (dateStr) {
+          currentEvent.end = dateStr
+          console.log('📅 Found DTEND:', dateStr)
+        }
       } else if (line.startsWith('LOCATION:')) {
         currentEvent.location = line.substring(9).trim()
       }
     }
   }
   
+  console.log('📅 Total events parsed:', events.length)
   return events
 }
 
