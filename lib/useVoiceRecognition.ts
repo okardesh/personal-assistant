@@ -78,6 +78,8 @@ export function useVoiceRecognition({
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const accumulatedTextRef = useRef<string>('')
   const lastResultTimeRef = useRef<number>(0)
+  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isRestartingRef = useRef(false)
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -198,38 +200,44 @@ export function useVoiceRecognition({
     }
 
     recognition.onend = () => {
+      // Clear any pending restart
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current)
+        restartTimeoutRef.current = null
+      }
+      
       // Only set listening to false if we explicitly stopped it
       if (isResolvedRef.current) {
         setIsListening(false)
+        isRestartingRef.current = false
         return
       }
       
       // If not explicitly stopped, check if we should restart
-      // For continuous mode OR when using silence timeout (to keep listening until timeout)
-      if (recognitionRef.current && !isResolvedRef.current) {
-        // Check if we're in continuous mode OR if we have accumulated text (user was speaking)
-        const shouldRestart = continuous || (accumulatedTextRef.current.trim().length > 0 && silenceTimeout > 0)
+      // Only restart in continuous mode, and only if we're not already restarting
+      if (recognitionRef.current && !isResolvedRef.current && continuous && !isRestartingRef.current) {
+        isRestartingRef.current = true
         
-        if (shouldRestart) {
-          // Small delay before restarting to avoid rapid restarts
-          setTimeout(() => {
-            try {
-              if (recognitionRef.current && !isResolvedRef.current) {
-                console.log('🔄 Restarting speech recognition')
-                recognitionRef.current.start()
-              }
-            } catch (error) {
-              // Ignore errors when restarting (might already be started)
-              console.log('Speech recognition restart:', error instanceof Error ? error.message : 'unknown')
-              // If restart fails, set listening to false
-              setIsListening(false)
+        // Longer delay before restarting to avoid rapid restarts
+        restartTimeoutRef.current = setTimeout(() => {
+          try {
+            if (recognitionRef.current && !isResolvedRef.current) {
+              console.log('🔄 Restarting speech recognition (continuous mode)')
+              recognitionRef.current.start()
+              isRestartingRef.current = false
+            } else {
+              isRestartingRef.current = false
             }
-          }, 100)
-        } else {
-          setIsListening(false)
-        }
+          } catch (error) {
+            // Ignore errors when restarting (might already be started)
+            console.log('Speech recognition restart error:', error instanceof Error ? error.message : 'unknown')
+            isRestartingRef.current = false
+            setIsListening(false)
+          }
+        }, 300) // Increased delay to prevent rapid restarts
       } else {
         setIsListening(false)
+        isRestartingRef.current = false
       }
     }
 
@@ -239,8 +247,17 @@ export function useVoiceRecognition({
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current)
       }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current)
+      }
+      isResolvedRef.current = true
+      isRestartingRef.current = false
       if (recognitionRef.current) {
-        recognitionRef.current.stop()
+        try {
+          recognitionRef.current.stop()
+        } catch (error) {
+          // Ignore errors when stopping
+        }
       }
     }
   }, [onResult, onError, language, continuous, silenceTimeout, autoSubmit])
@@ -249,8 +266,14 @@ export function useVoiceRecognition({
     if (recognitionRef.current && !isListening) {
       try {
         isResolvedRef.current = false
+        isRestartingRef.current = false
         accumulatedTextRef.current = ''
         lastResultTimeRef.current = Date.now()
+        // Clear any pending restarts
+        if (restartTimeoutRef.current) {
+          clearTimeout(restartTimeoutRef.current)
+          restartTimeoutRef.current = null
+        }
         recognitionRef.current.start()
       } catch (error) {
         console.error('Error starting recognition:', error)
@@ -262,13 +285,22 @@ export function useVoiceRecognition({
   }
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current) {
       isResolvedRef.current = true // Prevent auto-restart
+      isRestartingRef.current = false
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current)
         silenceTimeoutRef.current = null
       }
-      recognitionRef.current.stop()
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current)
+        restartTimeoutRef.current = null
+      }
+      try {
+        recognitionRef.current.stop()
+      } catch (error) {
+        // Ignore errors when stopping
+      }
       setIsListening(false)
     }
   }
