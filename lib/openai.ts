@@ -360,19 +360,26 @@ When adding events to calendar:
     - The email data will be provided in the "emails" array with a "snippet" field
     - The snippet contains the FULL email body text when available (can be 1000+ characters)
     - CRITICAL: You MUST read and use the snippet content to create a SHORT, CONCISE summary
-    - EMAIL SUMMARY FORMAT: Keep summaries SHORT and TO THE POINT. Format: "[Gönderen]'den: [Ana mesaj tek cümle]"
-    - Example good response: "Amazon.com.tr'den: Paketiniz bugün 10:59'da teslim edildi."
-    - Example good response: "LinkedIn'den: 6 yeni davetiyeniz var."
-    - Example good response: "Bankadan: Hesap özetiniz hazır."
-    - DO NOT include: "Gönderen:", "Tarih:", "Konu:" headers, links, or detailed formatting
-    - DO NOT include: "İşte özeti:", "Özet:", or similar introductory phrases
-    - DO NOT include: "Eğer başka bir şeyle yardımcı olmamı isterseniz" or similar closing phrases
-    - Just state the essential information in ONE sentence: who sent it and what the main message is
-    - If the snippet is long (more than 100 characters), it contains the actual email body - READ IT CAREFULLY and extract the MAIN POINT
-    - If snippet contains "Email Details:" header, it means body wasn't retrieved, but you STILL have subject, sender, and date - USE THEM to create a short summary
+    - EMAIL SUMMARY FORMAT: ONE SENTENCE ONLY. Format: "[Gönderen]'den: [Ana mesaj tek cümle]"
+    - Example good response: "Amazon'dan paketiniz bugün 10:59'da teslim edildi."
+    - Example good response: "LinkedIn'den 6 yeni davetiyeniz var."
+    - Example good response: "Bankadan hesap özetiniz hazır."
+    - FORBIDDEN - NEVER INCLUDE:
+      * "Gönderen:", "Tarih:", "Konu:", "Özet:" headers
+      * "Son e-posta, X'den geldi. İşte özeti:" introductory phrases
+      * "İşte özeti:", "Özet:" phrases
+      * Links (URLs, markdown links, etc.)
+      * "Eğer başka bir şeyle yardımcı olmamı isterseniz" closing phrases
+      * Multiple sentences - ONLY ONE SENTENCE
+      * Bold/italic formatting (**text**, *text*)
+      * Line breaks or paragraph separations
+    - Just state the essential information in ONE sentence: sender name (short, like "Amazon'dan" not "Amazon.com.tr'den") and the main message
+    - Extract the key information: what happened, when (if relevant), and any important details
+    - If the snippet is long (more than 100 characters), it contains the actual email body - READ IT CAREFULLY and extract the MAIN POINT in one sentence
+    - If snippet contains "Email Details:" header, it means body wasn't retrieved, but you STILL have subject, sender, and date - USE THEM to create a short one-sentence summary
     - Example bad response (FORBIDDEN - NEVER DO THIS): "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum. Başka bir konuda yardımcı olabilir miyim?"
-    - Example bad response (TOO VERBOSE): "Son e-posta, Amazon.com.tr'den geldi. İşte özeti: **Gönderen:** Amazon.com.tr... **Tarih:** ... **Konu:** ... **Özet:** ..."
-    - If you see verbose formatting in your response, DELETE IT IMMEDIATELY and replace with a short one-sentence summary
+    - Example bad response (TOO VERBOSE - FORBIDDEN): "Son e-posta, Amazon.com.tr'den geldi. İşte özeti: **Gönderen:** Amazon.com.tr <siparis-bilgisi@amazon.com.tr> **Tarih:** 20 Aralık 2025, 10:59 **Konu:** Paketiniz teslim edildi! **Özet:** Paketiniz bugün teslim edildi..."
+    - If you see ANY formatting, headers, links, or multiple sentences in your response, DELETE IT IMMEDIATELY and replace with a single sentence summary
 
     Email fetching logic:
     - When user asks about emails, first check for unread emails (up to 5)
