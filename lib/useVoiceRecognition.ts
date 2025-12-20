@@ -114,43 +114,14 @@ export function useVoiceRecognition({
       // Accumulate text
       accumulatedTextRef.current = allTranscripts
       
-      // Only process final results (when user pauses)
-      const finalResults = Array.from(event.results)
-        .filter((result) => result.isFinal)
-      
-      if (finalResults.length > 0) {
-        const finalTranscript = finalResults
-          .map((result) => result[0].transcript)
-          .join('')
-        
-        if (finalTranscript.trim()) {
-          // Clear silence timeout
-          if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current)
-            silenceTimeoutRef.current = null
-          }
-          
-          // If autoSubmit is enabled, submit immediately
-          if (autoSubmit) {
-            onResult(finalTranscript)
-            // Stop listening after submitting
-            if (recognitionRef.current) {
-              isResolvedRef.current = true
-              recognitionRef.current.stop()
-            }
-            return
-          } else {
-            onResult(finalTranscript)
-          }
-        }
-      }
-      
-      // Reset silence timeout - if no speech for silenceTimeout ms, auto-stop
+      // Clear and reset silence timeout - if no speech for silenceTimeout ms, auto-stop
       if (silenceTimeout > 0 && autoSubmit) {
         if (silenceTimeoutRef.current) {
           clearTimeout(silenceTimeoutRef.current)
+          silenceTimeoutRef.current = null
         }
         
+        // Set new timeout - only stop after silence period
         silenceTimeoutRef.current = setTimeout(() => {
           // Check if we have accumulated text
           const textToSubmit = accumulatedTextRef.current.trim()
@@ -166,6 +137,22 @@ export function useVoiceRecognition({
             recognitionRef.current.stop()
           }
         }, silenceTimeout)
+      }
+      
+      // Only process final results (when user pauses) - but don't stop immediately
+      const finalResults = Array.from(event.results)
+        .filter((result) => result.isFinal)
+      
+      if (finalResults.length > 0) {
+        const finalTranscript = finalResults
+          .map((result) => result[0].transcript)
+          .join('')
+        
+        if (finalTranscript.trim() && !autoSubmit) {
+          // Only call onResult if autoSubmit is false (manual mode)
+          onResult(finalTranscript)
+        }
+        // If autoSubmit is true, wait for silence timeout to submit
       }
     }
 
@@ -211,22 +198,38 @@ export function useVoiceRecognition({
     }
 
     recognition.onend = () => {
-      setIsListening(false)
-      // In Safari, onend might fire even when continuous=true
-      // Only restart if we're still supposed to be listening and user hasn't stopped it
-      if (continuous && recognitionRef.current && !isResolvedRef.current) {
-        // Small delay before restarting to avoid rapid restarts
-        setTimeout(() => {
-          try {
-            if (recognitionRef.current && !isResolvedRef.current) {
-              console.log('🔄 Restarting speech recognition (continuous mode)')
-              recognitionRef.current.start()
+      // Only set listening to false if we explicitly stopped it
+      if (isResolvedRef.current) {
+        setIsListening(false)
+        return
+      }
+      
+      // If not explicitly stopped, check if we should restart
+      // For continuous mode OR when using silence timeout (to keep listening until timeout)
+      if (recognitionRef.current && !isResolvedRef.current) {
+        // Check if we're in continuous mode OR if we have accumulated text (user was speaking)
+        const shouldRestart = continuous || (accumulatedTextRef.current.trim().length > 0 && silenceTimeout > 0)
+        
+        if (shouldRestart) {
+          // Small delay before restarting to avoid rapid restarts
+          setTimeout(() => {
+            try {
+              if (recognitionRef.current && !isResolvedRef.current) {
+                console.log('🔄 Restarting speech recognition')
+                recognitionRef.current.start()
+              }
+            } catch (error) {
+              // Ignore errors when restarting (might already be started)
+              console.log('Speech recognition restart:', error instanceof Error ? error.message : 'unknown')
+              // If restart fails, set listening to false
+              setIsListening(false)
             }
-          } catch (error) {
-            // Ignore errors when restarting (might already be started)
-            console.log('Speech recognition restart:', error instanceof Error ? error.message : 'unknown')
-          }
-        }, 100)
+          }, 100)
+        } else {
+          setIsListening(false)
+        }
+      } else {
+        setIsListening(false)
       }
     }
 
