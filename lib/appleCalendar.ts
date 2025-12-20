@@ -1026,17 +1026,6 @@ export async function addAppleCalendarEvent(params: AddEventParams): Promise<{ s
         }
         
         console.log('✅ Selected calendar for event creation:', calendarUrl)
-          if (inboxCalendar) {
-            console.warn('⚠️ Only special calendars found, trying inbox:', inboxCalendar)
-            calendarUrl = inboxCalendar
-          } else {
-            console.warn('⚠️ Only special calendars found, trying first one:', foundCalendars[0])
-            calendarUrl = foundCalendars[0]
-          }
-        } else {
-          console.warn('⚠️ No individual calendars found, cannot add event - calendar home URL does not accept events')
-          return { success: false, error: 'No writable calendar found. Please check your iCloud calendar settings.' }
-        }
       } else {
         console.warn('⚠️ Failed to list calendars:', listResponse.status, listResponse.statusText)
         console.log('📅 Using calendar home URL directly:', calendarHomeUrl)
