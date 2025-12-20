@@ -1,3 +1,60 @@
+# Personal Assistant
+
+AI-powered personal assistant with calendar, email, location, and voice integration.
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/okardesh/personal-assistant.git
+cd personal-assistant
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Then edit `.env.local` and fill in all the required API keys and credentials. See `.env.example` for all required variables.
+
+**Important:** `.env.local` is not committed to git for security reasons. You need to create it manually on each machine.
+
+### 4. Run the development server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Environment Variables
+
+All environment variables are documented in `.env.example`. Key variables include:
+
+- **OPENAI_API_KEY**: Your OpenAI API key (required)
+- **APPLE_CALENDAR_***: Apple Calendar (iCloud) credentials
+- **OUTLOOK_***: Outlook Calendar credentials
+- **GOOGLE_***: Google Search and Maps API keys
+- **SPOTIFY_***: Spotify API credentials
+- **OPENWEATHER_API_KEY**: OpenWeatherMap API key
+- **ICLOUD_EMAIL_***: iCloud email IMAP credentials
+
+## Deployment
+
+See `DEPLOY.md` for Vercel deployment instructions.
+
+---
+
 # Personal Assistant Web App
 
 A modern, intelligent personal assistant web application that integrates with your calendars, emails, and location services.
