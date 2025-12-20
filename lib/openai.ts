@@ -322,16 +322,20 @@ export async function chatWithOpenAI(
         input_text: 'Metin Girişleri',
       }
       
-      // Build response
+      // Build response - show specific device names instead of grouped by type
       let response = `Kontrol edebileceğim ${devices.length} cihaz var:\n\n`
       
-      Object.entries(devicesByType).forEach(([domain, deviceList]) => {
-        const typeName = deviceTypes[domain] || domain
-        response += `**${typeName}** (${deviceList.length}):\n`
-        deviceList.forEach((device: any) => {
-          response += `  • ${device.name} (${device.state})\n`
-        })
-        response += '\n'
+      // Sort devices by name for better readability
+      const allDevices = devices.map((device: any) => ({
+        name: device.attributes.friendly_name || device.entity_id,
+        entity_id: device.entity_id,
+        state: device.state,
+        domain: device.entity_id.split('.')[0],
+      })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'tr'))
+      
+      allDevices.forEach((device: any) => {
+        const stateEmoji = device.state === 'on' ? '🟢' : device.state === 'off' ? '🔴' : device.state === 'playing' ? '▶️' : device.state === 'docked' ? '🔌' : '⚪'
+        response += `${stateEmoji} **${device.name}** (${device.state})\n`
       })
       
       return { response: response.trim() }
