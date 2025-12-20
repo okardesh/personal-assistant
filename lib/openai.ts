@@ -177,7 +177,7 @@ const functions = [
   },
   {
     name: 'play_spotify_track',
-    description: 'Play a song on Spotify. Use this when the user asks to play music, a song, or an artist (e.g., "Spotify\'da şarkı çal", "müzik aç", "play music", "play [song name]", "play [artist name]").',
+    description: 'Play a song on Spotify. Use this when the user asks to play music, a song, or an artist (e.g., "Spotify\'da şarkı çal", "müzik aç", "play music", "play [song name]", "play [artist name]"). IMPORTANT: Always try to play on "this computer/phone" device, not on "Personal Assistant" device. The system will automatically transfer playback to the user\'s computer/phone if available.',
     parameters: {
       type: 'object',
       properties: {

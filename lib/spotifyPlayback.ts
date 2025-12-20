@@ -116,6 +116,36 @@ export class SpotifyWebPlayback {
     }
 
     try {
+      // First, try to transfer to "this device" (computer/phone) if available
+      try {
+        const { transferToThisDevice } = await import('./spotify')
+        const transferredDeviceId = await transferToThisDevice()
+        if (transferredDeviceId && transferredDeviceId !== this.deviceId) {
+          console.log('🎵 Transferred playback to this device before playing')
+          // Use the transferred device instead
+          const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${transferredDeviceId}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              uris: [uri],
+            }),
+          })
+
+          if (!response.ok) {
+            const error = await response.text()
+            throw new Error(`Failed to play track: ${error}`)
+          }
+          return
+        }
+      } catch (transferError) {
+        console.warn('🎵 Could not transfer to this device, using Web Playback SDK device:', transferError)
+        // Continue with Web Playback SDK device
+      }
+
+      // Use Web Playback SDK device
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`, {
         method: 'PUT',
         headers: {
