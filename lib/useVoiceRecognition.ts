@@ -126,8 +126,14 @@ export function useVoiceRecognition({
       recognition.interimResults = true
     } else {
       // Chrome/Edge
+      // In Chrome, continuous mode may cause issues with network errors
+      // Try continuous=true first, but if network errors persist, we'll handle restart
       recognition.continuous = true
       recognition.interimResults = true
+      console.log('🎤 [VoiceRecognition] Chrome/Edge detected - using continuous mode', {
+        continuous: recognition.continuous,
+        interimResults: recognition.interimResults,
+      })
     }
     
     recognition.lang = language
