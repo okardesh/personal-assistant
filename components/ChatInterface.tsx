@@ -181,7 +181,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
   }
 
   return (
-    <div className="flex flex-col h-[85vh] bg-gradient-to-br from-white via-slate-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm overflow-hidden">
+    <div className="flex flex-col h-[85vh] bg-gradient-to-br from-white via-orange-50/30 to-rose-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-orange-200/50 dark:border-slate-700/50 backdrop-blur-sm overflow-hidden">
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
         {messages.map((message, index) => (
@@ -193,8 +193,8 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
             {/* Avatar */}
             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-lg ${
               message.role === 'user'
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                : 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-slate-700 dark:text-slate-200'
+                ? 'bg-gradient-to-br from-orange-500 to-rose-600 text-white'
+                : 'bg-gradient-to-br from-teal-200 to-cyan-300 dark:from-teal-700 dark:to-cyan-600 text-teal-800 dark:text-teal-100'
             }`}>
               {message.role === 'user' ? 'S' : 'AI'}
             </div>
@@ -204,8 +204,8 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
               <div
                 className={`rounded-2xl px-5 py-3 shadow-lg transition-all duration-300 ${
                   message.role === 'user'
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm'
-                    : 'bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 rounded-tl-sm backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50'
+                    ? 'bg-gradient-to-br from-orange-500 via-pink-500 to-rose-600 text-white rounded-tr-sm'
+                    : 'bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 rounded-tl-sm backdrop-blur-sm border border-teal-200/50 dark:border-teal-700/50'
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">{message.content}</p>
@@ -224,14 +224,14 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
         ))}
         {isLoading && (
           <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-slate-700 dark:text-slate-200 shadow-lg">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-teal-200 to-cyan-300 dark:from-teal-700 dark:to-cyan-600 text-teal-800 dark:text-teal-100 shadow-lg">
               AI
             </div>
-            <div className="bg-white/90 dark:bg-slate-800/90 rounded-2xl rounded-tl-sm px-5 py-3 shadow-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+            <div className="bg-white/90 dark:bg-slate-800/90 rounded-2xl rounded-tl-sm px-5 py-3 shadow-lg border border-teal-200/50 dark:border-teal-700/50 backdrop-blur-sm">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <span className="w-2 h-2 bg-teal-400 dark:bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-2 h-2 bg-cyan-400 dark:bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-2 h-2 bg-teal-400 dark:bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
               </div>
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4">
+      <div className="border-t border-orange-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4">
         {/* Voice Controls */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isListening ? "Dinleniyor..." : "Mesajınızı yazın veya soru sorun..."}
-              className="w-full resize-none rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 max-h-32 shadow-sm"
+              className="w-full resize-none rounded-xl border-2 border-orange-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 max-h-32 shadow-sm"
               rows={1}
               disabled={isLoading || isListening}
             />
@@ -308,7 +308,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
           <button
             type="submit"
             disabled={!input.trim() || isLoading || isListening}
-            className="px-6 py-3.5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:hover:scale-100 font-medium"
+            className="px-6 py-3.5 bg-gradient-to-br from-orange-500 via-pink-500 to-rose-600 text-white rounded-xl hover:from-orange-600 hover:via-pink-600 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:hover:scale-100 font-medium"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
