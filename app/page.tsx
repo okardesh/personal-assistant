@@ -7,14 +7,7 @@ import { getClientLocation } from '@/lib/locationClient'
 import { useSpotify } from '@/lib/useSpotify'
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm your AI-powered personal assistant, powered by ChatGPT. I can help you with your calendar, emails, location-based tasks, and answer your questions. What would you like to do?",
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
 
   // Spotify integration
   const spotify = useSpotify()
