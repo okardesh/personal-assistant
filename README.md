@@ -12,6 +12,7 @@ A modern, intelligent personal assistant web application that integrates with yo
 - 💬 **Chat Interface**: Natural language command interface similar to ChatGPT
 - 🎨 **Modern UI**: Beautiful, responsive design with dark mode support
 - 🔄 **Function Calling**: AI can automatically call calendar, email, and weather functions
+- 🔊 **Amazon Alexa Integration**: Voice commands through Alexa Skills Kit
 
 ## Tech Stack
 
@@ -27,6 +28,10 @@ A modern, intelligent personal assistant web application that integrates with yo
 
 - Node.js 18+ and npm/yarn
 - Access to your calendars and email accounts (for OAuth setup)
+
+### Quick Deploy to Vercel
+
+For a quick deployment guide, see [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md). This includes all the information you need to deploy to Vercel, including Alexa integration setup.
 
 ### Installation
 
@@ -183,6 +188,69 @@ For reverse geocoding (getting addresses from coordinates), you can optionally a
 GEOCODING_API_KEY=your-api-key
 ```
 
+### Amazon Alexa Integration
+
+The app includes an Alexa Skills Kit endpoint that allows you to interact with your personal assistant through Amazon Alexa devices.
+
+See [SETUP_ALEXA.md](./SETUP_ALEXA.md) for detailed setup instructions.
+
+#### Quick Setup
+
+1. **Deploy your application** to a public URL (e.g., Vercel, AWS, etc.)
+   - The endpoint will be available at: `https://your-domain.com/api/alexa`
+
+2. **Create an Alexa Skill** in the [Amazon Developer Console](https://developer.amazon.com/alexa/console/ask):
+   - Go to [Alexa Developer Console](https://developer.amazon.com/alexa/console/ask)
+   - Click "Create Skill"
+   - Choose "Custom" model
+   - Choose "Provision your own" hosting
+   - Select your language (e.g., Turkish, English)
+
+3. **Configure the Skill**:
+   - **Invocation Name**: Choose a name users will say to activate your skill (e.g., "kişisel asistanım", "my personal assistant")
+   - **Endpoint**: Set the endpoint URL to `https://your-domain.com/api/alexa`
+   - **Default Region**: Select your region
+
+4. **Configure Intents** (Optional - the skill works with a catch-all intent):
+   - The skill uses a flexible intent system that processes natural language
+   - You can add custom intents or use the built-in ones:
+     - `AMAZON.CancelIntent` - Cancel/stop
+     - `AMAZON.StopIntent` - Stop
+     - `AMAZON.HelpIntent` - Get help
+
+5. **Build and Test**:
+   - Click "Build Model" in the Alexa Developer Console
+   - Use the "Test" tab to test your skill
+   - You can test with text input or voice
+
+6. **Publish** (Optional):
+   - Once tested, you can submit for certification to publish to the Alexa Skills Store
+   - Or keep it as a development skill for personal use
+
+#### Usage Examples
+
+Once set up, users can interact with your assistant through Alexa:
+
+- **"Alexa, open [your skill name]"** - Opens the skill
+- **"Takvimimi göster"** - Shows calendar
+- **"Bugünkü randevularım neler?"** - What are my appointments today?
+- **"E-postalarımı kontrol et"** - Check my emails
+- **"Hava durumu nasıl?"** - What's the weather like?
+- **"Yarınki toplantılarım"** - Tomorrow's meetings
+
+#### Technical Details
+
+- The Alexa endpoint (`/api/alexa`) receives JSON requests from Amazon Alexa
+- It processes the user's spoken command using the same OpenAI-powered assistant
+- Responses are formatted for Alexa's text-to-speech output
+- Session attributes maintain conversation context across interactions
+
+#### Security Notes
+
+- In production, you should verify Alexa request signatures
+- Consider implementing user authentication for multi-user scenarios
+- The endpoint should be accessible via HTTPS
+
 ## Usage
 
 ### Commands
@@ -217,6 +285,7 @@ personal-assistant/
 ├── app/
 │   ├── api/
 │   │   ├── assistant/     # Main assistant API endpoint
+│   │   ├── alexa/         # Amazon Alexa Skills Kit endpoint
 │   │   ├── calendar/      # Calendar integration API
 │   │   ├── email/         # Email integration API
 │   │   └── location/      # Location API
@@ -226,12 +295,14 @@ personal-assistant/
 ├── components/
 │   └── ChatInterface.tsx  # Chat UI component
 ├── lib/
+│   ├── alexa.ts           # Alexa request/response processing
 │   ├── calendar.ts        # Calendar utilities
 │   ├── commandProcessor.ts # Command processing logic
 │   ├── email.ts           # Email utilities
 │   ├── location.ts        # Location utilities (server)
 │   └── locationClient.ts  # Location utilities (client)
 ├── types/
+│   ├── alexa.ts           # Alexa Skills Kit types
 │   └── chat.ts            # TypeScript types
 └── package.json
 ```
