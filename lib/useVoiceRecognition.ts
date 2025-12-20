@@ -133,8 +133,18 @@ export function useVoiceRecognition({
     recognition.lang = language
 
     recognition.onstart = () => {
-      console.log('🎤 [VoiceRecognition] onstart - Recognition started')
+      console.log('🎤 [VoiceRecognition] onstart - Recognition started', {
+        continuous: recognition.continuous,
+        interimResults: recognition.interimResults,
+        isChrome,
+        isSafari,
+      })
       setIsListening(true)
+      // Reset network error count when recognition successfully starts
+      if (networkErrorCountRef.current > 0) {
+        console.log('🎤 [VoiceRecognition] Resetting network error count - recognition started')
+        networkErrorCountRef.current = 0
+      }
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
