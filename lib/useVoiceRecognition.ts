@@ -363,6 +363,9 @@ export function useVoiceRecognition({
         isRestartingRef.current = true
         isResolvedRef.current = false // Reset to allow restart
         lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
+        
+        // Immediately trigger restart logic below
+        // Don't return here - let it fall through to restart logic
       }
       
       // If it ended due to a network error or no-speech, try to restart
