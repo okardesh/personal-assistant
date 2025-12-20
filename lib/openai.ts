@@ -270,6 +270,79 @@ export async function chatWithOpenAI(
 
   let spotifyAction: any = null
 
+  // Check if user is asking about available devices - handle directly without OpenAI function calling
+  const lastUserMessage = messages[messages.length - 1]?.content?.toLowerCase() || ''
+  const deviceListKeywords = [
+    'hangi cihazları kontrol edebiliyorsun',
+    'hangi cihazları kontrol edebiliyosun',
+    'hangi cihazları kontrol edebilirsin',
+    'cihazları listele',
+    'cihaz listesi',
+    'ne tür cihazlar var',
+    'what devices can you control',
+    'list devices',
+    'show me available devices',
+    'hangi cihazlar var',
+  ]
+  
+  if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword))) {
+    try {
+      const devices = await getHomeAssistantDevices(true) // Filter to only controllable devices
+      
+      // Group devices by type
+      const devicesByType: Record<string, any[]> = {}
+      
+      devices.forEach((device: any) => {
+        const domain = device.entity_id.split('.')[0]
+        if (!devicesByType[domain]) {
+          devicesByType[domain] = []
+        }
+        devicesByType[domain].push({
+          entity_id: device.entity_id,
+          name: device.attributes.friendly_name || device.entity_id,
+          state: device.state,
+        })
+      })
+      
+      // Format for user-friendly display
+      const deviceTypes: Record<string, string> = {
+        light: 'Işıklar',
+        switch: 'Anahtarlar',
+        cover: 'Perdeler',
+        climate: 'Termostatlar',
+        fan: 'Fanlar',
+        lock: 'Kilitler',
+        media_player: 'Medya Oynatıcılar',
+        vacuum: 'Süpürgeler',
+        scene: 'Sahneler',
+        script: 'Scriptler',
+        input_boolean: 'Boolean Girişler',
+        input_number: 'Sayısal Girişler',
+        input_select: 'Seçim Girişleri',
+        input_text: 'Metin Girişleri',
+      }
+      
+      // Build response
+      let response = `Kontrol edebileceğim ${devices.length} cihaz var:\n\n`
+      
+      Object.entries(devicesByType).forEach(([domain, deviceList]) => {
+        const typeName = deviceTypes[domain] || domain
+        response += `**${typeName}** (${deviceList.length}):\n`
+        deviceList.forEach((device: any) => {
+          response += `  • ${device.name} (${device.state})\n`
+        })
+        response += '\n'
+      })
+      
+      return { response: response.trim() }
+    } catch (error) {
+      console.error('Error fetching device list:', error)
+      return { 
+        response: `Cihaz listesini alırken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}. Home Assistant bağlantınızı kontrol edin.` 
+      }
+    }
+  }
+
   try {
     // Get current date and time
     const now = new Date()
