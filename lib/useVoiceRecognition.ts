@@ -80,6 +80,7 @@ export function useVoiceRecognition({
   const lastResultTimeRef = useRef<number>(0)
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isRestartingRef = useRef(false)
+  const lastErrorRef = useRef<string | null>(null)
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -209,7 +210,9 @@ export function useVoiceRecognition({
         case 'network':
           // Network errors are common and transient - don't stop recognition
           // Speech Recognition API requires internet connection in Chrome
-          console.log('🎤 [VoiceRecognition] Network error - continuing (not stopping)...')
+          console.log('🎤 [VoiceRecognition] Network error - will restart on onend...')
+          // Store the error so we can restart in onend
+          lastErrorRef.current = 'network'
           // Don't stop recognition for network errors - they're often transient
           return // Don't stop, don't notify
         case 'not-allowed':
@@ -247,6 +250,7 @@ export function useVoiceRecognition({
         isListening,
         accumulatedText: accumulatedTextRef.current,
         hasSilenceTimeout: !!silenceTimeoutRef.current,
+        lastError: lastErrorRef.current,
       })
       
       // Clear any pending restart
@@ -260,6 +264,32 @@ export function useVoiceRecognition({
         console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting')
         setIsListening(false)
         isRestartingRef.current = false
+        lastErrorRef.current = null
+        return
+      }
+      
+      // If it ended due to a network error, try to restart
+      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current) {
+        console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...')
+        isRestartingRef.current = true
+        lastErrorRef.current = null
+        
+        // Restart after a short delay
+        restartTimeoutRef.current = setTimeout(() => {
+          try {
+            if (recognitionRef.current && !isResolvedRef.current) {
+              console.log('🎤 [VoiceRecognition] Restarting after network error...')
+              recognitionRef.current.start()
+              isRestartingRef.current = false
+            } else {
+              isRestartingRef.current = false
+            }
+          } catch (error) {
+            console.error('🎤 [VoiceRecognition] Error restarting after network error:', error)
+            isRestartingRef.current = false
+            setIsListening(false)
+          }
+        }, 500) // Wait 500ms before restarting
         return
       }
       
@@ -268,6 +298,7 @@ export function useVoiceRecognition({
       console.warn('🎤 [VoiceRecognition] onend - Unexpected end event (continuous mode)')
       setIsListening(false)
       isRestartingRef.current = false
+      lastErrorRef.current = null
     }
 
     recognitionRef.current = recognition
@@ -301,6 +332,7 @@ export function useVoiceRecognition({
       try {
         isResolvedRef.current = false
         isRestartingRef.current = false
+        lastErrorRef.current = null
         accumulatedTextRef.current = ''
         lastResultTimeRef.current = Date.now()
         // Clear any pending restarts
