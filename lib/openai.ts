@@ -1052,8 +1052,10 @@ Note: Email body not retrieved, but provide information based on available detai
             if (!action) {
               functionResult = { error: 'Action is required' }
             } else {
+              // Declare targetEntityId outside try block so it's accessible in catch
+              let targetEntityId: string | undefined = entityId
+              
               try {
-                let targetEntityId = entityId
 
                 // If entity_id not provided, search for device by name
                 if (!targetEntityId && deviceName) {
@@ -1224,7 +1226,8 @@ Note: Email body not retrieved, but provide information based on available detai
                 } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
                   userFriendlyError = 'Home Assistant yetkilendirme hatası. Token\'ın geçerli olduğundan emin olun.'
                 } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-                  userFriendlyError = `Cihaz bulunamadı. Entity ID'yi kontrol edin: ${targetEntityId || deviceName || 'bilinmiyor'}`
+                  const deviceIdentifier = targetEntityId || entityId || deviceName || 'bilinmiyor'
+                  userFriendlyError = `Cihaz bulunamadı. Entity ID'yi kontrol edin: ${deviceIdentifier}`
                 } else if (errorMessage.includes('Connection') || errorMessage.includes('Network')) {
                   userFriendlyError = 'Home Assistant\'a bağlanılamıyor. URL\'nin doğru olduğundan emin olun.'
                 }
