@@ -201,9 +201,13 @@ export function useVoiceRecognition({
       
       switch (event.error) {
         case 'no-speech':
-          // Don't notify for no-speech errors - this is normal when user stops talking
-          // But don't stop recognition - let it continue
-          console.log('🎤 [VoiceRecognition] No speech detected - continuing...')
+          // "no-speech" error means browser stopped recognition because no speech was detected
+          // This is normal when user hasn't started speaking yet
+          // We should restart recognition to keep it active
+          console.log('🎤 [VoiceRecognition] No speech detected - will restart on onend...')
+          // Store the error so we can restart in onend
+          lastErrorRef.current = 'no-speech'
+          // Don't change isListening state - let onend handle restart
           return // Don't stop, don't notify
         case 'aborted':
           // Don't notify for aborted - user likely stopped it manually
@@ -293,13 +297,19 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       
-      // If it ended due to a network error, try to restart (even if isResolved is true)
-      // Network errors are transient and should trigger a restart
-      // But only if we haven't exceeded the error limit (3 errors)
+      // If it ended due to a network error or no-speech, try to restart
+      // Network errors and no-speech are transient and should trigger a restart
+      // But only if we haven't exceeded the error limit (3 errors for network)
       // IMPORTANT: Check lastError BEFORE checking isResolved, and don't clear it until after restart
-      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current && networkErrorCountRef.current < 3) {
-        console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...', {
+      const shouldRestart = 
+        (lastErrorRef.current === 'network' && networkErrorCountRef.current < 3) ||
+        (lastErrorRef.current === 'no-speech' && !isResolvedRef.current)
+      
+      if (shouldRestart && recognitionRef.current && !isRestartingRef.current) {
+        const errorType = lastErrorRef.current === 'network' ? 'Network' : 'No-speech'
+        console.log(`🎤 [VoiceRecognition] onend - ${errorType} error detected, restarting...`, {
           errorCount: networkErrorCountRef.current,
+          errorType: lastErrorRef.current,
         })
         isRestartingRef.current = true
         // Reset isResolved so we can restart
@@ -310,8 +320,14 @@ export function useVoiceRecognition({
         // Restart after a longer delay to avoid rapid restarts
         restartTimeoutRef.current = setTimeout(() => {
           try {
-            if (recognitionRef.current && !isResolvedRef.current && networkErrorCountRef.current < 3) {
-              console.log('🎤 [VoiceRecognition] Restarting after network error...')
+            // For no-speech, always try to restart if not resolved
+            // For network, only restart if error count is below threshold
+            const canRestart = 
+              (lastErrorRef.current === 'no-speech' && !isResolvedRef.current) ||
+              (lastErrorRef.current === 'network' && !isResolvedRef.current && networkErrorCountRef.current < 3)
+            
+            if (recognitionRef.current && canRestart) {
+              console.log(`🎤 [VoiceRecognition] Restarting after ${lastErrorRef.current} error...`)
               recognitionRef.current.start()
               isRestartingRef.current = false
               // Only clear lastError after successful restart
@@ -319,23 +335,24 @@ export function useVoiceRecognition({
             } else {
               console.log('🎤 [VoiceRecognition] Cannot restart - too many errors or recognition resolved', {
                 errorCount: networkErrorCountRef.current,
+                errorType: lastErrorRef.current,
               })
               isRestartingRef.current = false
               setIsListening(false)
               isResolvedRef.current = true
               lastErrorRef.current = null
-              if (onError && networkErrorCountRef.current >= 3) {
+              if (onError && lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
                 onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
               }
             }
           } catch (error) {
-            console.error('🎤 [VoiceRecognition] Error restarting after network error:', error)
+            console.error(`🎤 [VoiceRecognition] Error restarting after ${lastErrorRef.current} error:`, error)
             isRestartingRef.current = false
             setIsListening(false)
             isResolvedRef.current = true
             lastErrorRef.current = null
           }
-        }, 1000) // Wait 1 second before restarting to avoid rapid restarts
+        }, lastErrorRef.current === 'no-speech' ? 300 : 1000) // Faster restart for no-speech (300ms), slower for network (1s)
         return
       } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
         console.error('🎤 [VoiceRecognition] Too many network errors, not restarting', {
