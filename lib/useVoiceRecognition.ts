@@ -81,6 +81,8 @@ export function useVoiceRecognition({
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isRestartingRef = useRef(false)
   const lastErrorRef = useRef<string | null>(null)
+  const networkErrorCountRef = useRef<number>(0)
+  const lastNetworkErrorTimeRef = useRef<number>(0)
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -210,7 +212,29 @@ export function useVoiceRecognition({
         case 'network':
           // Network errors are common and transient - don't stop recognition
           // Speech Recognition API requires internet connection in Chrome
-          console.log('🎤 [VoiceRecognition] Network error - will restart on onend...')
+          const now = Date.now()
+          // Reset counter if last error was more than 10 seconds ago
+          if (now - lastNetworkErrorTimeRef.current > 10000) {
+            networkErrorCountRef.current = 0
+          }
+          networkErrorCountRef.current++
+          lastNetworkErrorTimeRef.current = now
+          
+          console.log('🎤 [VoiceRecognition] Network error - will restart on onend...', {
+            errorCount: networkErrorCountRef.current,
+          })
+          
+          // If too many network errors in a short time, stop trying
+          if (networkErrorCountRef.current > 5) {
+            console.error('🎤 [VoiceRecognition] Too many network errors, stopping recognition')
+            setIsListening(false)
+            isResolvedRef.current = true
+            if (onError) {
+              onError('Speech recognition service is unavailable. Please check your internet connection.')
+            }
+            return
+          }
+          
           // Store the error so we can restart in onend
           lastErrorRef.current = 'network'
           // Don't stop recognition for network errors - they're often transient
@@ -261,23 +285,28 @@ export function useVoiceRecognition({
       
       // If it ended due to a network error, try to restart (even if isResolved is true)
       // Network errors are transient and should trigger a restart
-      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current) {
-        console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...')
+      // But only if we haven't exceeded the error limit
+      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current && networkErrorCountRef.current <= 5) {
+        console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...', {
+          errorCount: networkErrorCountRef.current,
+        })
         isRestartingRef.current = true
         // Reset isResolved so we can restart
         isResolvedRef.current = false
         lastErrorRef.current = null
         
-        // Restart after a short delay
+        // Restart after a longer delay to avoid rapid restarts
         restartTimeoutRef.current = setTimeout(() => {
           try {
-            if (recognitionRef.current && !isResolvedRef.current) {
+            if (recognitionRef.current && !isResolvedRef.current && networkErrorCountRef.current <= 5) {
               console.log('🎤 [VoiceRecognition] Restarting after network error...')
               recognitionRef.current.start()
               isRestartingRef.current = false
             } else {
-              console.log('🎤 [VoiceRecognition] Cannot restart - recognition resolved or not available')
+              console.log('🎤 [VoiceRecognition] Cannot restart - too many errors or recognition resolved')
               isRestartingRef.current = false
+              setIsListening(false)
+              isResolvedRef.current = true
             }
           } catch (error) {
             console.error('🎤 [VoiceRecognition] Error restarting after network error:', error)
@@ -285,7 +314,13 @@ export function useVoiceRecognition({
             setIsListening(false)
             isResolvedRef.current = true
           }
-        }, 500) // Wait 500ms before restarting
+        }, 1000) // Wait 1 second before restarting to avoid rapid restarts
+        return
+      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current > 5) {
+        console.error('🎤 [VoiceRecognition] Too many network errors, not restarting')
+        setIsListening(false)
+        isResolvedRef.current = true
+        lastErrorRef.current = null
         return
       }
       
@@ -338,6 +373,9 @@ export function useVoiceRecognition({
         isResolvedRef.current = false
         isRestartingRef.current = false
         lastErrorRef.current = null
+        // Reset network error count when manually starting
+        networkErrorCountRef.current = 0
+        lastNetworkErrorTimeRef.current = 0
         accumulatedTextRef.current = ''
         lastResultTimeRef.current = Date.now()
         // Clear any pending restarts
