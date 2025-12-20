@@ -103,10 +103,17 @@ export function useVoiceRecognition({
     recognition.lang = language
 
     recognition.onstart = () => {
+      console.log('🎤 [VoiceRecognition] onstart - Recognition started')
       setIsListening(true)
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      console.log('🎤 [VoiceRecognition] onresult - Received result', {
+        resultCount: event.results.length,
+        isResolved: isResolvedRef.current,
+        isListening,
+      })
+      
       // Update last result time
       lastResultTimeRef.current = Date.now()
       
@@ -115,20 +122,29 @@ export function useVoiceRecognition({
         .map((result) => result[0].transcript)
         .join('')
       
+      console.log('🎤 [VoiceRecognition] Accumulated text:', allTranscripts)
+      
       // Accumulate text
       accumulatedTextRef.current = allTranscripts
       
       // Clear and reset silence timeout - if no speech for silenceTimeout ms, auto-stop
       if (silenceTimeout > 0 && autoSubmit) {
         if (silenceTimeoutRef.current) {
+          console.log('🎤 [VoiceRecognition] Clearing existing silence timeout')
           clearTimeout(silenceTimeoutRef.current)
           silenceTimeoutRef.current = null
         }
         
         // Set new timeout - only stop after silence period
+        console.log(`🎤 [VoiceRecognition] Setting silence timeout: ${silenceTimeout}ms`)
         silenceTimeoutRef.current = setTimeout(() => {
           // Check if we have accumulated text
           const textToSubmit = accumulatedTextRef.current.trim()
+          console.log('🎤 [VoiceRecognition] Silence timeout fired', {
+            textToSubmit,
+            isListening,
+            isResolved: isResolvedRef.current,
+          })
           if (textToSubmit && recognitionRef.current && isListening) {
             console.log('🛑 Auto-stopping after silence, submitting:', textToSubmit)
             isResolvedRef.current = true
@@ -152,6 +168,8 @@ export function useVoiceRecognition({
           .map((result) => result[0].transcript)
           .join('')
         
+        console.log('🎤 [VoiceRecognition] Final transcript:', finalTranscript)
+        
         if (finalTranscript.trim() && !autoSubmit) {
           // Only call onResult if autoSubmit is false (manual mode)
           onResult(finalTranscript)
@@ -161,6 +179,13 @@ export function useVoiceRecognition({
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.log('🎤 [VoiceRecognition] onerror', {
+        error: event.error,
+        message: event.message,
+        isResolved: isResolvedRef.current,
+        isListening,
+      })
+      
       setIsListening(false)
       let errorMessage = ''
       let shouldNotify = false
@@ -168,11 +193,13 @@ export function useVoiceRecognition({
       switch (event.error) {
         case 'no-speech':
           // Don't notify for no-speech errors - this is normal when user stops talking
-          // Silently ignore
+          // But don't stop recognition - let it continue
+          console.log('🎤 [VoiceRecognition] No speech detected - continuing...')
           return
         case 'aborted':
           // Don't notify for aborted - user likely stopped it manually
           // Silently ignore
+          console.log('🎤 [VoiceRecognition] Recognition aborted')
           return
         case 'audio-capture':
           errorMessage = 'No microphone found. Please check your microphone.'
@@ -181,6 +208,7 @@ export function useVoiceRecognition({
         case 'network':
           // Network errors are common and transient - silently ignore
           // Speech Recognition API requires internet connection in Chrome
+          console.log('🎤 [VoiceRecognition] Network error - continuing...')
           return
         case 'not-allowed':
           errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.'
@@ -191,7 +219,8 @@ export function useVoiceRecognition({
           shouldNotify = true
           break
         default:
-          // Silently ignore unknown errors
+          // Log unknown errors but don't stop
+          console.log('🎤 [VoiceRecognition] Unknown error:', event.error)
           return
       }
       
@@ -202,6 +231,13 @@ export function useVoiceRecognition({
     }
 
     recognition.onend = () => {
+      console.log('🎤 [VoiceRecognition] onend', {
+        isResolved: isResolvedRef.current,
+        isListening,
+        accumulatedText: accumulatedTextRef.current,
+        hasSilenceTimeout: !!silenceTimeoutRef.current,
+      })
+      
       // Clear any pending restart
       if (restartTimeoutRef.current) {
         clearTimeout(restartTimeoutRef.current)
@@ -210,16 +246,15 @@ export function useVoiceRecognition({
       
       // If we explicitly stopped it, don't restart
       if (isResolvedRef.current) {
+        console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting')
         setIsListening(false)
         isRestartingRef.current = false
         return
       }
       
-      // If not explicitly stopped and we have accumulated text, we might want to restart
-      // But only if silence timeout hasn't fired yet
-      // Actually, with continuous=true, onend should rarely fire
-      // If it does fire, it's likely because of an error or browser limitation
-      // In that case, don't restart to avoid loops
+      // With continuous=true, onend should rarely fire
+      // If it does fire unexpectedly, log it but don't restart to avoid loops
+      console.warn('🎤 [VoiceRecognition] onend - Unexpected end event (continuous mode)')
       setIsListening(false)
       isRestartingRef.current = false
     }
@@ -246,6 +281,11 @@ export function useVoiceRecognition({
   }, [onResult, onError, language, continuous, silenceTimeout, autoSubmit])
 
   const startListening = () => {
+    console.log('🎤 [VoiceRecognition] startListening called', {
+      hasRecognition: !!recognitionRef.current,
+      isListening,
+    })
+    
     if (recognitionRef.current && !isListening) {
       try {
         isResolvedRef.current = false
@@ -257,21 +297,32 @@ export function useVoiceRecognition({
           clearTimeout(restartTimeoutRef.current)
           restartTimeoutRef.current = null
         }
+        // Clear silence timeout if exists
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current)
+          silenceTimeoutRef.current = null
+        }
+        console.log('🎤 [VoiceRecognition] Starting recognition...')
         recognitionRef.current.start()
       } catch (error) {
-        console.error('Error starting recognition:', error)
+        console.error('🎤 [VoiceRecognition] Error starting recognition:', error)
         if (onError) {
           onError('Failed to start voice recognition')
         }
       }
+    } else {
+      console.log('🎤 [VoiceRecognition] Cannot start - recognition not ready or already listening')
     }
   }
 
   const stopListening = () => {
+    console.log('🎤 [VoiceRecognition] stopListening called')
+    
     if (recognitionRef.current) {
       isResolvedRef.current = true // Prevent auto-restart
       isRestartingRef.current = false
       if (silenceTimeoutRef.current) {
+        console.log('🎤 [VoiceRecognition] Clearing silence timeout')
         clearTimeout(silenceTimeoutRef.current)
         silenceTimeoutRef.current = null
       }
@@ -280,9 +331,10 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       try {
+        console.log('🎤 [VoiceRecognition] Stopping recognition...')
         recognitionRef.current.stop()
       } catch (error) {
-        // Ignore errors when stopping
+        console.error('🎤 [VoiceRecognition] Error stopping recognition:', error)
       }
       setIsListening(false)
     }
