@@ -446,9 +446,19 @@ export function useVoiceRecognition({
         return
       }
       
-      // If we explicitly stopped it (and it's not a network error), don't restart
-      if (isResolvedRef.current) {
-        console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting')
+      // If we explicitly stopped it (and it's not a restartable error), don't restart
+      // IMPORTANT: Check restartable errors BEFORE checking isResolved
+      const isRestartableError = lastErrorRef.current === 'network' || 
+                                 lastErrorRef.current === 'no-speech' || 
+                                 (lastErrorRef.current === 'aborted' && isSafari)
+      
+      // If it's a restartable error, we've already handled it above, so skip this check
+      if (!isRestartableError && isResolvedRef.current) {
+        console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting', {
+          lastError: lastErrorRef.current,
+          isSafari,
+          isRestartableError,
+        })
         setIsListening(false)
         isRestartingRef.current = false
         lastErrorRef.current = null
