@@ -231,12 +231,16 @@ export function useVoiceRecognition({
           })
           
           // If too many network errors in a short time, stop trying
-          if (networkErrorCountRef.current > 5) {
-            console.error('🎤 [VoiceRecognition] Too many network errors, stopping recognition')
+          // Lower the threshold to 3 to fail faster and avoid infinite loops
+          if (networkErrorCountRef.current >= 3) {
+            console.error('🎤 [VoiceRecognition] Too many network errors, stopping recognition', {
+              errorCount: networkErrorCountRef.current,
+            })
             setIsListening(false)
             isResolvedRef.current = true
+            lastErrorRef.current = null // Clear error ref to prevent restart
             if (onError) {
-              onError('Speech recognition service is unavailable. Please check your internet connection.')
+              onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
             }
             return
           }
@@ -291,9 +295,9 @@ export function useVoiceRecognition({
       
       // If it ended due to a network error, try to restart (even if isResolved is true)
       // Network errors are transient and should trigger a restart
-      // But only if we haven't exceeded the error limit
+      // But only if we haven't exceeded the error limit (3 errors)
       // IMPORTANT: Check lastError BEFORE checking isResolved, and don't clear it until after restart
-      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current && networkErrorCountRef.current <= 5) {
+      if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current && networkErrorCountRef.current < 3) {
         console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...', {
           errorCount: networkErrorCountRef.current,
         })
@@ -306,18 +310,23 @@ export function useVoiceRecognition({
         // Restart after a longer delay to avoid rapid restarts
         restartTimeoutRef.current = setTimeout(() => {
           try {
-            if (recognitionRef.current && !isResolvedRef.current && networkErrorCountRef.current <= 5) {
+            if (recognitionRef.current && !isResolvedRef.current && networkErrorCountRef.current < 3) {
               console.log('🎤 [VoiceRecognition] Restarting after network error...')
               recognitionRef.current.start()
               isRestartingRef.current = false
               // Only clear lastError after successful restart
               lastErrorRef.current = null
             } else {
-              console.log('🎤 [VoiceRecognition] Cannot restart - too many errors or recognition resolved')
+              console.log('🎤 [VoiceRecognition] Cannot restart - too many errors or recognition resolved', {
+                errorCount: networkErrorCountRef.current,
+              })
               isRestartingRef.current = false
               setIsListening(false)
               isResolvedRef.current = true
               lastErrorRef.current = null
+              if (onError && networkErrorCountRef.current >= 3) {
+                onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+              }
             }
           } catch (error) {
             console.error('🎤 [VoiceRecognition] Error restarting after network error:', error)
@@ -328,11 +337,16 @@ export function useVoiceRecognition({
           }
         }, 1000) // Wait 1 second before restarting to avoid rapid restarts
         return
-      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current > 5) {
-        console.error('🎤 [VoiceRecognition] Too many network errors, not restarting')
+      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
+        console.error('🎤 [VoiceRecognition] Too many network errors, not restarting', {
+          errorCount: networkErrorCountRef.current,
+        })
         setIsListening(false)
         isResolvedRef.current = true
         lastErrorRef.current = null
+        if (onError) {
+          onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+        }
         return
       }
       
