@@ -277,6 +277,7 @@ export function useVoiceRecognition({
           console.log('🎤 [VoiceRecognition] Network error - will restart on onend...', {
             errorCount: networkErrorCountRef.current,
             isSafari,
+            isChrome,
           })
           
           // Safari and some browsers may have persistent network errors - be more lenient
@@ -288,6 +289,7 @@ export function useVoiceRecognition({
             console.error('🎤 [VoiceRecognition] Too many network errors, stopping recognition', {
               errorCount: networkErrorCountRef.current,
               isSafari,
+              isChrome,
             })
             setIsListening(false)
             isResolvedRef.current = true
@@ -304,8 +306,10 @@ export function useVoiceRecognition({
           
           // Store the error so we can restart in onend
           lastErrorRef.current = 'network'
+          // IMPORTANT: Don't change isListening state - let recognition continue
+          // Network errors are transient and recognition may still work
           // Don't stop recognition for network errors - they're often transient
-          return // Don't stop, don't notify
+          return // Don't stop, don't notify, don't change state
         case 'not-allowed':
           errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.'
           shouldNotify = true
