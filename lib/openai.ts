@@ -414,7 +414,7 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
           const period = functionArgs.period || 'today'
           let events: any[] = []
           
-          if (typeof window === 'undefined') {
+            if (typeof window === 'undefined') {
             // Server-side: call functions directly
             console.log('🍎 Server-side: Fetching calendar events directly...')
             const [appleEvents, outlookEvents] = await Promise.all([
@@ -427,7 +427,24 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
             events = await getCalendarEvents(period)
           }
           
-          functionResult = { events }
+          // Sort events by time
+          events.sort((a, b) => {
+            const timeA = a.time || '00:00'
+            const timeB = b.time || '00:00'
+            return timeA.localeCompare(timeB)
+          })
+          
+          // Add current time to events data for filtering
+          const now = new Date()
+          const currentHour = now.getHours()
+          const currentMinute = now.getMinutes()
+          const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
+          
+          functionResult = { 
+            events,
+            currentTime: currentTimeStr,
+            currentDate: now.toISOString().split('T')[0],
+          }
         } else if (functionName === 'get_emails') {
           console.log('📧 [OpenAI] get_emails called', { args: functionArgs })
           
