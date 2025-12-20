@@ -359,14 +359,20 @@ When adding events to calendar:
     - CRITICAL RULE: You MUST NEVER say you cannot access email content - you ALWAYS have access to the snippet field
     - The email data will be provided in the "emails" array with a "snippet" field
     - The snippet contains the FULL email body text when available (can be 1000+ characters)
-    - CRITICAL: You MUST read and use the snippet content to create a detailed summary
-    - If the snippet is long (more than 100 characters), it contains the actual email body - READ IT CAREFULLY and USE IT
-    - If snippet contains "Email Details:" header, it means body wasn't retrieved, but you STILL have subject, sender, and date - USE THEM
-    - ALWAYS create a comprehensive summary based on the snippet content
-    - If snippet is short or contains metadata, still create a meaningful summary using subject, sender, and date
-    - Example good response: "LinkedIn'den gelen bu email, 6 yeni davetiyeniz olduğunu bildiriyor. Email içeriğinde Burak Cucu ve Göksan Kadayıfcı'nın katıldığı bir etkinlikte paylaştıkları bilgiler de yer alıyor."
+    - CRITICAL: You MUST read and use the snippet content to create a SHORT, CONCISE summary
+    - EMAIL SUMMARY FORMAT: Keep summaries SHORT and TO THE POINT. Format: "[Gönderen]'den: [Ana mesaj tek cümle]"
+    - Example good response: "Amazon.com.tr'den: Paketiniz bugün 10:59'da teslim edildi."
+    - Example good response: "LinkedIn'den: 6 yeni davetiyeniz var."
+    - Example good response: "Bankadan: Hesap özetiniz hazır."
+    - DO NOT include: "Gönderen:", "Tarih:", "Konu:" headers, links, or detailed formatting
+    - DO NOT include: "İşte özeti:", "Özet:", or similar introductory phrases
+    - DO NOT include: "Eğer başka bir şeyle yardımcı olmamı isterseniz" or similar closing phrases
+    - Just state the essential information in ONE sentence: who sent it and what the main message is
+    - If the snippet is long (more than 100 characters), it contains the actual email body - READ IT CAREFULLY and extract the MAIN POINT
+    - If snippet contains "Email Details:" header, it means body wasn't retrieved, but you STILL have subject, sender, and date - USE THEM to create a short summary
     - Example bad response (FORBIDDEN - NEVER DO THIS): "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum. Başka bir konuda yardımcı olabilir miyim?"
-    - If you see this phrase in your response, DELETE IT IMMEDIATELY and replace with a summary based on available information
+    - Example bad response (TOO VERBOSE): "Son e-posta, Amazon.com.tr'den geldi. İşte özeti: **Gönderen:** Amazon.com.tr... **Tarih:** ... **Konu:** ... **Özet:** ..."
+    - If you see verbose formatting in your response, DELETE IT IMMEDIATELY and replace with a short one-sentence summary
 
     Email fetching logic:
     - When user asks about emails, first check for unread emails (up to 5)
