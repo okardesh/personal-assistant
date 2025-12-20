@@ -7,6 +7,11 @@ import {
   turnOffDevice,
   setBrightness,
   searchDevices,
+  startVacuum,
+  pauseVacuum,
+  stopVacuum,
+  returnVacuumToBase,
+  controlMediaPlayer,
 } from '@/lib/homeAssistant'
 
 /**
@@ -86,6 +91,9 @@ export async function POST(request: NextRequest) {
 
     let result: boolean
 
+    // Determine device type from entity_id
+    const domain = entity_id.split('.')[0]
+
     switch (action) {
       case 'turn_on':
         result = await turnOnDevice(entity_id)
@@ -105,6 +113,80 @@ export async function POST(request: NextRequest) {
         result = await setBrightness(entity_id, service_data.brightness)
         break
 
+      // Vacuum (Roomba) actions
+      case 'start':
+        if (domain === 'vacuum') {
+          result = await startVacuum(entity_id)
+        } else {
+          result = await turnOnDevice(entity_id)
+        }
+        break
+
+      case 'pause':
+        if (domain === 'vacuum') {
+          result = await pauseVacuum(entity_id)
+        } else if (domain === 'media_player') {
+          result = await controlMediaPlayer(entity_id, 'pause')
+        } else {
+          return NextResponse.json(
+            { error: `Pause action not supported for ${domain} devices` },
+            { status: 400 }
+          )
+        }
+        break
+
+      case 'stop':
+        if (domain === 'vacuum') {
+          result = await stopVacuum(entity_id)
+        } else if (domain === 'media_player') {
+          result = await controlMediaPlayer(entity_id, 'stop')
+        } else {
+          result = await turnOffDevice(entity_id)
+        }
+        break
+
+      case 'return_to_base':
+        if (domain === 'vacuum') {
+          result = await returnVacuumToBase(entity_id)
+        } else {
+          return NextResponse.json(
+            { error: 'return_to_base action only supported for vacuum devices' },
+            { status: 400 }
+          )
+        }
+        break
+
+      // Media player actions
+      case 'play':
+        if (domain === 'media_player') {
+          result = await controlMediaPlayer(entity_id, 'play')
+        } else {
+          result = await turnOnDevice(entity_id)
+        }
+        break
+
+      case 'next_track':
+        if (domain === 'media_player') {
+          result = await controlMediaPlayer(entity_id, 'next_track')
+        } else {
+          return NextResponse.json(
+            { error: 'next_track action only supported for media players' },
+            { status: 400 }
+          )
+        }
+        break
+
+      case 'previous_track':
+        if (domain === 'media_player') {
+          result = await controlMediaPlayer(entity_id, 'previous_track')
+        } else {
+          return NextResponse.json(
+            { error: 'previous_track action only supported for media players' },
+            { status: 400 }
+          )
+        }
+        break
+
       case 'control':
         // Generic control with custom service and service_data
         const service = service_data?.service || 'turn_on'
@@ -113,7 +195,7 @@ export async function POST(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: `Unknown action: ${action}. Supported actions: turn_on, turn_off, set_brightness, control` },
+          { error: `Unknown action: ${action}. Supported actions: turn_on, turn_off, set_brightness, start, pause, stop, return_to_base, play, next_track, previous_track, control` },
           { status: 400 }
         )
     }

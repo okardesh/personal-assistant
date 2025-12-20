@@ -216,3 +216,52 @@ export async function getDeviceState(entityId: string): Promise<string | null> {
   return device?.state || null
 }
 
+/**
+ * Control vacuum (Roomba, etc.)
+ */
+export async function controlVacuum(entityId: string, action: 'start' | 'pause' | 'stop' | 'return_to_base' | 'locate'): Promise<boolean> {
+  return controlHomeAssistantDevice(entityId, action)
+}
+
+/**
+ * Start vacuum cleaning
+ */
+export async function startVacuum(entityId: string): Promise<boolean> {
+  return controlVacuum(entityId, 'start')
+}
+
+/**
+ * Pause vacuum cleaning
+ */
+export async function pauseVacuum(entityId: string): Promise<boolean> {
+  return controlVacuum(entityId, 'pause')
+}
+
+/**
+ * Stop vacuum cleaning
+ */
+export async function stopVacuum(entityId: string): Promise<boolean> {
+  return controlVacuum(entityId, 'stop')
+}
+
+/**
+ * Return vacuum to base
+ */
+export async function returnVacuumToBase(entityId: string): Promise<boolean> {
+  return controlVacuum(entityId, 'return_to_base')
+}
+
+/**
+ * Control media player
+ */
+export async function controlMediaPlayer(
+  entityId: string, 
+  action: 'play' | 'pause' | 'stop' | 'next_track' | 'previous_track' | 'volume_set' | 'volume_mute'
+): Promise<boolean> {
+  if (action === 'volume_set') {
+    // Volume set requires volume_level (0-1)
+    return controlHomeAssistantDevice(entityId, 'volume_set', { volume_level: 0.5 })
+  }
+  return controlHomeAssistantDevice(entityId, action)
+}
+

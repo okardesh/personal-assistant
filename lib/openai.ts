@@ -7,6 +7,11 @@ import {
   turnOffDevice,
   setBrightness,
   getDeviceState,
+  startVacuum,
+  pauseVacuum,
+  stopVacuum,
+  returnVacuumToBase,
+  controlMediaPlayer,
 } from './homeAssistant'
 import { fetchICloudEmails } from './icloudEmail'
 import { getWeather, getWeatherByCity } from './weather'
@@ -219,18 +224,18 @@ const functions = [
   },
   {
     name: 'control_homekit_device',
-    description: 'Control HomeKit devices (lights, switches, thermostats, etc.) through Home Assistant. Use this when the user asks to control home devices (e.g., "lambayı aç", "ışığı kapat", "lambayı %50 parlaklığa ayarla", "turn on the light", "turn off the switch", "set brightness to 50%"). First search for the device by name, then control it.',
+    description: 'Control smart home devices (lights, switches, thermostats, vacuum cleaners like Roomba, media players, etc.) through Home Assistant. Use this when the user asks to control home devices. Examples: "lambayı aç", "ışığı kapat", "Roomba\'yı başlat", "süpürgeyi durdur", "müziği çal", "TV\'yi kapat", "turn on the light", "start Roomba", "play music". First search for the device by name, then control it. For vacuum cleaners (Roomba), use start/pause/stop/return_to_base actions. For media players, use play/pause/stop/next_track/previous_track actions.',
     parameters: {
       type: 'object',
       properties: {
         deviceName: {
           type: 'string',
-          description: 'The name of the device to control (e.g., "living room light", "bedroom lamp", "kitchen switch"). If exact entity_id is known, use that instead.',
+          description: 'The name of the device to control (e.g., "living room light", "bedroom lamp", "kitchen switch", "Roomba", "vacuum", "TV", "bedroom speaker"). If exact entity_id is known, use that instead.',
         },
         action: {
           type: 'string',
-          enum: ['turn_on', 'turn_off', 'set_brightness', 'toggle'],
-          description: 'The action to perform on the device',
+          enum: ['turn_on', 'turn_off', 'set_brightness', 'toggle', 'start', 'pause', 'stop', 'return_to_base', 'play', 'next_track', 'previous_track'],
+          description: 'The action to perform on the device. For lights/switches: turn_on, turn_off, toggle. For vacuum (Roomba): start, pause, stop, return_to_base. For media players: play, pause, stop, next_track, previous_track.',
         },
         brightness: {
           type: 'number',
@@ -238,7 +243,7 @@ const functions = [
         },
         entityId: {
           type: 'string',
-          description: 'Exact Home Assistant entity_id (e.g., "light.living_room"). If provided, deviceName will be ignored.',
+          description: 'Exact Home Assistant entity_id (e.g., "light.living_room", "vacuum.roomba", "media_player.tv"). If provided, deviceName will be ignored.',
         },
       },
       required: ['action'],
@@ -282,7 +287,7 @@ export async function chatWithOpenAI(
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
 - Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). IMPORTANT: The user's current location will be automatically used as the origin - you do NOT need to ask for location permission. If location is not available, the function will return an error, but you should still try to use it if the user asks for directions.
-- HomeKit Devices: Control HomeKit devices (lights, switches, thermostats, etc.) through Home Assistant. Use control_homekit_device when user asks to control home devices (e.g., "lambayı aç", "ışığı kapat", "lambayı %50 parlaklığa ayarla", "turn on the light", "turn off the switch", "set brightness to 50%"). The function will search for devices by name if entity_id is not provided. IMPORTANT: Home Assistant must be configured with HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.
+- HomeKit Devices: Control smart home devices (lights, switches, thermostats, vacuum cleaners like Roomba, media players, etc.) through Home Assistant. Use control_homekit_device when user asks to control home devices. Examples: "lambayı aç", "ışığı kapat", "Roomba'yı başlat", "süpürgeyi durdur", "Roomba'yı üsse gönder", "müziği çal", "TV'yi kapat", "turn on the light", "start Roomba", "play music". For vacuum cleaners (Roomba): use "start" to start cleaning, "pause" to pause, "stop" to stop, "return_to_base" to return to charging dock. For media players: use "play", "pause", "stop", "next_track", "previous_track". The function will search for devices by name if entity_id is not provided. IMPORTANT: Home Assistant must be configured with HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.
   CRITICAL FORMATTING RULES:
   - ALWAYS start your response with the travel time FIRST (e.g., "Boğaziçi Üniversitesi'ne yaklaşık 25 dakika sürer" or "En hızlı yol araba ile 30 dakika")
   - Then IMMEDIATELY mention traffic conditions:
@@ -1084,6 +1089,9 @@ Note: Email body not retrieved, but provide information based on available detai
                   let success = false
                   let message = ''
 
+                  // Determine device type from entity_id
+                  const domain = targetEntityId.split('.')[0]
+                  
                   switch (action) {
                     case 'turn_on':
                       success = await turnOnDevice(targetEntityId)
@@ -1113,6 +1121,80 @@ Note: Email body not retrieved, but provide information based on available detai
                       } else {
                         success = await turnOnDevice(targetEntityId)
                         message = `Turned on ${targetEntityId}`
+                      }
+                      break
+
+                    // Vacuum (Roomba) actions
+                    case 'start':
+                      if (domain === 'vacuum') {
+                        success = await startVacuum(targetEntityId)
+                        message = `Started ${targetEntityId}`
+                      } else {
+                        success = await turnOnDevice(targetEntityId)
+                        message = `Turned on ${targetEntityId}`
+                      }
+                      break
+
+                    case 'pause':
+                      if (domain === 'vacuum') {
+                        success = await pauseVacuum(targetEntityId)
+                        message = `Paused ${targetEntityId}`
+                      } else if (domain === 'media_player') {
+                        success = await controlMediaPlayer(targetEntityId, 'pause')
+                        message = `Paused ${targetEntityId}`
+                      } else {
+                        functionResult = { error: `Pause action not supported for ${domain} devices` }
+                      }
+                      break
+
+                    case 'stop':
+                      if (domain === 'vacuum') {
+                        success = await stopVacuum(targetEntityId)
+                        message = `Stopped ${targetEntityId}`
+                      } else if (domain === 'media_player') {
+                        success = await controlMediaPlayer(targetEntityId, 'stop')
+                        message = `Stopped ${targetEntityId}`
+                      } else {
+                        success = await turnOffDevice(targetEntityId)
+                        message = `Turned off ${targetEntityId}`
+                      }
+                      break
+
+                    case 'return_to_base':
+                      if (domain === 'vacuum') {
+                        success = await returnVacuumToBase(targetEntityId)
+                        message = `Returned ${targetEntityId} to base`
+                      } else {
+                        functionResult = { error: `Return to base action only supported for vacuum devices` }
+                      }
+                      break
+
+                    // Media player actions
+                    case 'play':
+                      if (domain === 'media_player') {
+                        success = await controlMediaPlayer(targetEntityId, 'play')
+                        message = `Playing ${targetEntityId}`
+                      } else {
+                        success = await turnOnDevice(targetEntityId)
+                        message = `Turned on ${targetEntityId}`
+                      }
+                      break
+
+                    case 'next_track':
+                      if (domain === 'media_player') {
+                        success = await controlMediaPlayer(targetEntityId, 'next_track')
+                        message = `Next track on ${targetEntityId}`
+                      } else {
+                        functionResult = { error: `Next track action only supported for media players` }
+                      }
+                      break
+
+                    case 'previous_track':
+                      if (domain === 'media_player') {
+                        success = await controlMediaPlayer(targetEntityId, 'previous_track')
+                        message = `Previous track on ${targetEntityId}`
+                      } else {
+                        functionResult = { error: `Previous track action only supported for media players` }
                       }
                       break
 
