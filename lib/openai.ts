@@ -40,7 +40,7 @@ interface Message {
 const functions = [
   {
     name: 'get_calendar_events',
-    description: 'Get calendar events from the user\'s PERSONAL calendar (Apple Calendar or Outlook). ONLY use this when the user explicitly mentions their calendar, appointments, meetings, or schedule (e.g., "takvimim", "randevularım", "toplantılarım", "my calendar", "my appointments"). Do NOT use this for general questions about events, sports matches, concerts, or public events - use Google search instead.',
+    description: 'Get calendar events from the user\'s PERSONAL calendar (Apple Calendar or Outlook). Use this when the user asks about their calendar, appointments, meetings, schedule, or "what\'s next" (e.g., "takvimim", "randevularım", "toplantılarım", "sırada ne var", "sonraki etkinlik", "bugun takvimde sirada ne var", "my calendar", "my appointments", "what\'s next", "next event"). IMPORTANT: When user asks "sırada ne var" or "what\'s next", you MUST get today\'s events and filter to show only the next event after current time. Do NOT use this for general questions about events, sports matches, concerts, or public events - use Google search instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -332,6 +332,16 @@ When displaying calendar events, format them nicely:
 - Include location if available: "⏰ 14:30 - Toplantı 📍 İstanbul"
 - For today: "📅 Bugünkü Etkinlikleriniz:\n\n⏰ 14:30 - Toplantı 📍 İstanbul\n⏰ 16:00 - Randevu"
 - For tomorrow: "📅 Yarınki Etkinlikleriniz:\n\n⏰ 10:00 - Toplantı 📍 İstanbul\n⏰ 14:00 - Randevu"
+
+CRITICAL: When user asks "sırada ne var", "sonraki etkinlik", "what's next", "next event", or similar questions:
+- ALWAYS check the CURRENT TIME first (provided above)
+- Get today's calendar events using get_calendar_events with period='today'
+- Filter events to find the NEXT event that starts AFTER the current time
+- If current time is 10:36, find events that start after 10:36 today
+- Show ONLY the next upcoming event, not all events
+- Format: "⏰ [Time] - [Event Title] 📍 [Location if available]"
+- If no events remain today, check tomorrow's events
+- Example: If current time is 10:36 and events are [07:30, 13:00, 19:00], show only "⏰ 13:00 - Çocuk Tiyatrosu 📍 Caddebostan Kültür Merkezi"
 - For week: Include date for each event: "📅 Bu Haftaki Etkinlikleriniz:\n\n📆 Pazartesi, 18 Aralık\n⏰ 14:30 - Toplantı 📍 İstanbul\n\n📆 Salı, 19 Aralık\n⏰ 10:00 - Randevu"
 - Do NOT include description/notes in the response
 - Keep it clean and organized
@@ -835,7 +845,26 @@ Note: Email body not retrieved, but provide information based on available detai
               fetchAppleCalendarEvents(period),
               fetchOutlookCalendarEvents(period).catch(() => []),
             ])
-            functionResult = { events: [...appleEvents, ...outlookEvents] }
+            const allEvents = [...appleEvents, ...outlookEvents]
+            
+            // Sort events by time
+            allEvents.sort((a, b) => {
+              const timeA = a.time || '00:00'
+              const timeB = b.time || '00:00'
+              return timeA.localeCompare(timeB)
+            })
+            
+            // Add current time to events data for filtering
+            const now = new Date()
+            const currentHour = now.getHours()
+            const currentMinute = now.getMinutes()
+            const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
+            
+            functionResult = { 
+              events: allEvents,
+              currentTime: currentTimeStr,
+              currentDate: now.toISOString().split('T')[0],
+            }
           } else if (functionName === 'search_nearby_events') {
             const searchLat = functionArgs.latitude || location?.latitude
             const searchLng = functionArgs.longitude || location?.longitude
