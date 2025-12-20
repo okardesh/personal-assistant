@@ -1,0 +1,202 @@
+/**
+ * Home Assistant API Integration
+ * 
+ * Home Assistant can control HomeKit devices and provides an HTTP API.
+ * This module provides functions to interact with Home Assistant.
+ */
+
+interface HomeAssistantConfig {
+  baseUrl: string
+  accessToken: string
+}
+
+interface HomeAssistantDevice {
+  entity_id: string
+  state: string
+  attributes: Record<string, any>
+}
+
+let homeAssistantConfig: HomeAssistantConfig | null = null
+
+function getHomeAssistantConfig(): HomeAssistantConfig | null {
+  const baseUrl = process.env.HOME_ASSISTANT_URL
+  const accessToken = process.env.HOME_ASSISTANT_ACCESS_TOKEN
+
+  if (!baseUrl || !accessToken) {
+    return null
+  }
+
+  return {
+    baseUrl: baseUrl.replace(/\/$/, ''), // Remove trailing slash
+    accessToken,
+  }
+}
+
+/**
+ * Get all devices from Home Assistant
+ */
+export async function getHomeAssistantDevices(): Promise<HomeAssistantDevice[]> {
+  const config = getHomeAssistantConfig()
+  if (!config) {
+    throw new Error('Home Assistant is not configured. Please set HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.')
+  }
+
+  try {
+    const response = await fetch(`${config.baseUrl}/api/states`, {
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Home Assistant API error: ${response.status} ${response.statusText}`)
+    }
+
+    const devices = await response.json()
+    return devices
+  } catch (error) {
+    console.error('Error fetching Home Assistant devices:', error)
+    throw error
+  }
+}
+
+/**
+ * Get a specific device by entity_id
+ */
+export async function getHomeAssistantDevice(entityId: string): Promise<HomeAssistantDevice | null> {
+  const config = getHomeAssistantConfig()
+  if (!config) {
+    throw new Error('Home Assistant is not configured.')
+  }
+
+  try {
+    const response = await fetch(`${config.baseUrl}/api/states/${entityId}`, {
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null
+      }
+      throw new Error(`Home Assistant API error: ${response.status} ${response.statusText}`)
+    }
+
+    const device = await response.json()
+    return device
+  } catch (error) {
+    console.error(`Error fetching Home Assistant device ${entityId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Control a Home Assistant device
+ */
+export async function controlHomeAssistantDevice(
+  entityId: string,
+  service: string,
+  serviceData?: Record<string, any>
+): Promise<boolean> {
+  const config = getHomeAssistantConfig()
+  if (!config) {
+    throw new Error('Home Assistant is not configured.')
+  }
+
+  // Extract domain from entity_id (e.g., "light.living_room" -> "light")
+  const domain = entityId.split('.')[0]
+
+  try {
+    const response = await fetch(`${config.baseUrl}/api/services/${domain}/${service}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        entity_id: entityId,
+        ...serviceData,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Home Assistant API error: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    const result = await response.json()
+    return true
+  } catch (error) {
+    console.error(`Error controlling Home Assistant device ${entityId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Turn on a device
+ */
+export async function turnOnDevice(entityId: string): Promise<boolean> {
+  return controlHomeAssistantDevice(entityId, 'turn_on')
+}
+
+/**
+ * Turn off a device
+ */
+export async function turnOffDevice(entityId: string): Promise<boolean> {
+  return controlHomeAssistantDevice(entityId, 'turn_off')
+}
+
+/**
+ * Set brightness for a light
+ */
+export async function setBrightness(entityId: string, brightness: number): Promise<boolean> {
+  // Brightness is 0-255 in Home Assistant
+  const brightnessValue = Math.max(0, Math.min(255, Math.round(brightness * 2.55))) // Convert 0-100 to 0-255
+  return controlHomeAssistantDevice(entityId, 'turn_on', {
+    brightness: brightnessValue,
+  })
+}
+
+/**
+ * Set color temperature for a light
+ */
+export async function setColorTemperature(entityId: string, colorTemp: number): Promise<boolean> {
+  return controlHomeAssistantDevice(entityId, 'turn_on', {
+    color_temp: colorTemp,
+  })
+}
+
+/**
+ * Set color for a light (RGB)
+ */
+export async function setColor(entityId: string, rgb: [number, number, number]): Promise<boolean> {
+  return controlHomeAssistantDevice(entityId, 'turn_on', {
+    rgb_color: rgb,
+  })
+}
+
+/**
+ * Search for devices by name
+ */
+export async function searchDevices(query: string): Promise<HomeAssistantDevice[]> {
+  const devices = await getHomeAssistantDevices()
+  const lowerQuery = query.toLowerCase()
+
+  return devices.filter(device => {
+    const friendlyName = device.attributes.friendly_name || device.entity_id
+    return friendlyName.toLowerCase().includes(lowerQuery) ||
+           device.entity_id.toLowerCase().includes(lowerQuery)
+  })
+}
+
+/**
+ * Get device state
+ */
+export async function getDeviceState(entityId: string): Promise<string | null> {
+  const device = await getHomeAssistantDevice(entityId)
+  return device?.state || null
+}
+

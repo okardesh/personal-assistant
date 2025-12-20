@@ -1,6 +1,13 @@
 import OpenAI from 'openai'
 import { getCalendarEvents } from './calendar'
 import { getEmails } from './email'
+import {
+  searchDevices,
+  turnOnDevice,
+  turnOffDevice,
+  setBrightness,
+  getDeviceState,
+} from './homeAssistant'
 import { fetchICloudEmails } from './icloudEmail'
 import { getWeather, getWeatherByCity } from './weather'
 import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar'
@@ -210,6 +217,33 @@ const functions = [
       required: ['destination'],
     },
   },
+  {
+    name: 'control_homekit_device',
+    description: 'Control HomeKit devices (lights, switches, thermostats, etc.) through Home Assistant. Use this when the user asks to control home devices (e.g., "lambayı aç", "ışığı kapat", "lambayı %50 parlaklığa ayarla", "turn on the light", "turn off the switch", "set brightness to 50%"). First search for the device by name, then control it.',
+    parameters: {
+      type: 'object',
+      properties: {
+        deviceName: {
+          type: 'string',
+          description: 'The name of the device to control (e.g., "living room light", "bedroom lamp", "kitchen switch"). If exact entity_id is known, use that instead.',
+        },
+        action: {
+          type: 'string',
+          enum: ['turn_on', 'turn_off', 'set_brightness', 'toggle'],
+          description: 'The action to perform on the device',
+        },
+        brightness: {
+          type: 'number',
+          description: 'Brightness level (0-100) for lights. Only used when action is set_brightness.',
+        },
+        entityId: {
+          type: 'string',
+          description: 'Exact Home Assistant entity_id (e.g., "light.living_room"). If provided, deviceName will be ignored.',
+        },
+      },
+      required: ['action'],
+    },
+  },
 ]
 
 export async function chatWithOpenAI(
@@ -248,6 +282,7 @@ export async function chatWithOpenAI(
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
 - Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). IMPORTANT: The user's current location will be automatically used as the origin - you do NOT need to ask for location permission. If location is not available, the function will return an error, but you should still try to use it if the user asks for directions.
+- HomeKit Devices: Control HomeKit devices (lights, switches, thermostats, etc.) through Home Assistant. Use control_homekit_device when user asks to control home devices (e.g., "lambayı aç", "ışığı kapat", "lambayı %50 parlaklığa ayarla", "turn on the light", "turn off the switch", "set brightness to 50%"). The function will search for devices by name if entity_id is not provided. IMPORTANT: Home Assistant must be configured with HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.
   CRITICAL FORMATTING RULES:
   - ALWAYS start your response with the travel time FIRST (e.g., "Boğaziçi Üniversitesi'ne yaklaşık 25 dakika sürer" or "En hızlı yol araba ile 30 dakika")
   - Then IMMEDIATELY mention traffic conditions:
@@ -1000,6 +1035,105 @@ Note: Email body not retrieved, but provide information based on available detai
                 console.error('Error getting directions:', error)
                 functionResult = { 
                   error: error instanceof Error ? error.message : 'Failed to get directions' 
+                }
+              }
+            }
+          } else if (functionName === 'control_homekit_device') {
+            const action = functionArgs.action
+            const deviceName = functionArgs.deviceName
+            const entityId = functionArgs.entityId
+            const brightness = functionArgs.brightness
+
+            if (!action) {
+              functionResult = { error: 'Action is required' }
+            } else {
+              try {
+                let targetEntityId = entityId
+
+                // If entity_id not provided, search for device by name
+                if (!targetEntityId && deviceName) {
+                  console.log(`🔍 Searching for device: ${deviceName}`)
+                  const devices = await searchDevices(deviceName)
+                  
+                  if (devices.length === 0) {
+                    functionResult = { 
+                      error: `Device "${deviceName}" not found. Please check the device name or use the exact entity_id.` 
+                    }
+                  } else if (devices.length === 1) {
+                    targetEntityId = devices[0].entity_id
+                    console.log(`✅ Found device: ${targetEntityId}`)
+                  } else {
+                    // Multiple devices found, use the first one or return list
+                    targetEntityId = devices[0].entity_id
+                    console.log(`⚠️ Multiple devices found, using: ${targetEntityId}`)
+                    functionResult = {
+                      warning: `Multiple devices found for "${deviceName}". Using: ${targetEntityId}`,
+                      availableDevices: devices.map(d => ({
+                        entity_id: d.entity_id,
+                        name: d.attributes.friendly_name || d.entity_id,
+                        state: d.state,
+                      })),
+                    }
+                  }
+                }
+
+                if (!targetEntityId) {
+                  functionResult = { error: 'Device name or entity_id is required' }
+                } else {
+                  // Perform the action
+                  let success = false
+                  let message = ''
+
+                  switch (action) {
+                    case 'turn_on':
+                      success = await turnOnDevice(targetEntityId)
+                      message = `Turned on ${targetEntityId}`
+                      break
+
+                    case 'turn_off':
+                      success = await turnOffDevice(targetEntityId)
+                      message = `Turned off ${targetEntityId}`
+                      break
+
+                    case 'set_brightness':
+                      if (typeof brightness !== 'number' || brightness < 0 || brightness > 100) {
+                        functionResult = { error: 'Brightness must be a number between 0 and 100' }
+                        break
+                      }
+                      success = await setBrightness(targetEntityId, brightness)
+                      message = `Set brightness of ${targetEntityId} to ${brightness}%`
+                      break
+
+                    case 'toggle':
+                      // Get current state and toggle
+                      const currentState = await getDeviceState(targetEntityId)
+                      if (currentState === 'on') {
+                        success = await turnOffDevice(targetEntityId)
+                        message = `Turned off ${targetEntityId}`
+                      } else {
+                        success = await turnOnDevice(targetEntityId)
+                        message = `Turned on ${targetEntityId}`
+                      }
+                      break
+
+                    default:
+                      functionResult = { error: `Unknown action: ${action}` }
+                      break
+                  }
+
+                  if (success !== undefined) {
+                    functionResult = {
+                      success,
+                      message,
+                      entityId: targetEntityId,
+                      action,
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Error controlling HomeKit device:', error)
+                functionResult = {
+                  error: error instanceof Error ? error.message : 'Failed to control device',
                 }
               }
             }

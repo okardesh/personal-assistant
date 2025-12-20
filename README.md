@@ -136,6 +136,10 @@ GMAIL_CLIENT_SECRET=
 
 # Geocoding API (for address lookup) - Optional
 GEOCODING_API_KEY=
+
+# Home Assistant (for HomeKit device control) - Optional
+HOME_ASSISTANT_URL=http://homeassistant.local:8123
+HOME_ASSISTANT_ACCESS_TOKEN=your-long-lived-access-token
 ```
 
 4. Run the development server:
@@ -245,11 +249,43 @@ For reverse geocoding (getting addresses from coordinates), you can optionally a
 GEOCODING_API_KEY=your-api-key
 ```
 
-### Amazon Alexa Integration
+### Apple HomeKit Integration
 
-The app includes an Alexa Skills Kit endpoint that allows you to interact with your personal assistant through Amazon Alexa devices.
+The app can control HomeKit devices (lights, switches, thermostats, etc.) through Home Assistant. This allows you to control your smart home devices using natural language commands.
 
-See [SETUP_ALEXA.md](./SETUP_ALEXA.md) for detailed setup instructions.
+**How it works**:
+- Uses Home Assistant as a bridge to HomeKit devices
+- OpenAI function calling detects device control commands
+- Automatically searches for devices by name
+- Supports: turn on/off, brightness control, toggle, and more
+
+**Requirements**:
+- Home Assistant installed and running
+- HomeKit integration enabled in Home Assistant
+- Home Assistant API token
+
+**Example commands**:
+- "Lambayı aç" / "Turn on the light"
+- "Işığı kapat" / "Turn off the light"
+- "Lambayı %50 parlaklığa ayarla" / "Set brightness to 50%"
+- "Salon lambasını aç" / "Turn on living room light"
+
+See [SETUP_HOMEKIT.md](./SETUP_HOMEKIT.md) for detailed setup instructions.
+
+### Apple Shortcuts & Siri Integration
+
+The app can be integrated with Apple Shortcuts to work with Siri. This allows you to control your personal assistant using voice commands on iOS, iPadOS, and macOS devices.
+
+**Advantages**:
+- ✅ No need for a constantly running machine
+- ✅ Works with Siri ("Hey Siri")
+- ✅ Easy setup - just configure in Shortcuts app
+- ✅ Uses existing API endpoints
+- ✅ Works on all Apple devices
+
+See [SETUP_APPLE_SHORTCUTS.md](./SETUP_APPLE_SHORTCUTS.md) for detailed setup instructions.
+
+**Note**: For Amazon Alexa integration, see [SETUP_ALEXA.md](./SETUP_ALEXA.md) (requires separate setup).
 
 #### Quick Setup
 
