@@ -355,6 +355,13 @@ export function useVoiceRecognition({
         lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
       }
       
+      // Safari-specific: If aborted error occurred, reset isResolved to allow restart
+      // Safari's "aborted" error with "Corrupt" message is often recoverable
+      if (isSafari && lastErrorRef.current === 'aborted' && isResolvedRef.current) {
+        console.log('🎤 [VoiceRecognition] Safari: aborted error detected, resetting isResolved to allow restart')
+        isResolvedRef.current = false // Reset to allow restart
+      }
+      
       // If it ended due to a network error or no-speech, try to restart
       // Network errors and no-speech are transient and should trigger a restart
       // But only if we haven't exceeded the error limit
