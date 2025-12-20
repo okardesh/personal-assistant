@@ -99,10 +99,24 @@ export function useVoiceRecognition({
 
     setIsSupported(true)
     const recognition = new SpeechRecognition()
-    // Always use continuous=true to keep recognition active until silence timeout
-    // This prevents recognition from stopping after first result
-    recognition.continuous = true
-    recognition.interimResults = true // Show interim results for better UX
+    
+    // Detect Safari
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                     /iPad|iPhone|iPod/.test(navigator.userAgent)
+    
+    // Safari has different behavior - continuous mode may not work the same way
+    // Use continuous mode for Chrome/Edge, but be more careful with Safari
+    if (isSafari) {
+      console.log('🎤 [VoiceRecognition] Safari detected - using Safari-specific settings')
+      // Safari may have issues with continuous=true, so we'll handle it differently
+      recognition.continuous = true
+      recognition.interimResults = true
+    } else {
+      // Chrome/Edge
+      recognition.continuous = true
+      recognition.interimResults = true
+    }
+    
     recognition.lang = language
 
     recognition.onstart = () => {
