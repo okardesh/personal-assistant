@@ -222,6 +222,10 @@ export function useVoiceRecognition({
         case 'network':
           // Network errors are common and transient - don't stop recognition
           // Speech Recognition API requires internet connection in Chrome
+          // Safari may have different network error behavior
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                           /iPad|iPhone|iPod/.test(navigator.userAgent)
+          
           const now = Date.now()
           // Reset counter if last error was more than 10 seconds ago
           if (now - lastNetworkErrorTimeRef.current > 10000) {
@@ -232,19 +236,27 @@ export function useVoiceRecognition({
           
           console.log('🎤 [VoiceRecognition] Network error - will restart on onend...', {
             errorCount: networkErrorCountRef.current,
+            isSafari,
           })
           
+          // Safari may have persistent network errors - be more lenient
+          const maxNetworkErrors = isSafari ? 5 : 3
+          
           // If too many network errors in a short time, stop trying
-          // Lower the threshold to 3 to fail faster and avoid infinite loops
-          if (networkErrorCountRef.current >= 3) {
+          if (networkErrorCountRef.current >= maxNetworkErrors) {
             console.error('🎤 [VoiceRecognition] Too many network errors, stopping recognition', {
               errorCount: networkErrorCountRef.current,
+              isSafari,
             })
             setIsListening(false)
             isResolvedRef.current = true
             lastErrorRef.current = null // Clear error ref to prevent restart
             if (onError) {
-              onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+              if (isSafari) {
+                onError('Safari\'de speech recognition için internet bağlantısı gereklidir. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.')
+              } else {
+                onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+              }
             }
             return
           }
@@ -299,10 +311,14 @@ export function useVoiceRecognition({
       
       // If it ended due to a network error or no-speech, try to restart
       // Network errors and no-speech are transient and should trigger a restart
-      // But only if we haven't exceeded the error limit (3 errors for network)
+      // But only if we haven't exceeded the error limit
       // IMPORTANT: Check lastError BEFORE checking isResolved, and don't clear it until after restart
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                       /iPad|iPhone|iPod/.test(navigator.userAgent)
+      const maxNetworkErrors = isSafari ? 5 : 3
+      
       const shouldRestart = 
-        (lastErrorRef.current === 'network' && networkErrorCountRef.current < 3) ||
+        (lastErrorRef.current === 'network' && networkErrorCountRef.current < maxNetworkErrors) ||
         (lastErrorRef.current === 'no-speech' && !isResolvedRef.current)
       
       if (shouldRestart && recognitionRef.current && !isRestartingRef.current) {
@@ -324,7 +340,7 @@ export function useVoiceRecognition({
             // For network, only restart if error count is below threshold
             const canRestart = 
               (lastErrorRef.current === 'no-speech' && !isResolvedRef.current) ||
-              (lastErrorRef.current === 'network' && !isResolvedRef.current && networkErrorCountRef.current < 3)
+              (lastErrorRef.current === 'network' && !isResolvedRef.current && networkErrorCountRef.current < maxNetworkErrors)
             
             if (recognitionRef.current && canRestart) {
               console.log(`🎤 [VoiceRecognition] Restarting after ${lastErrorRef.current} error...`)
@@ -341,8 +357,12 @@ export function useVoiceRecognition({
               setIsListening(false)
               isResolvedRef.current = true
               lastErrorRef.current = null
-              if (onError && lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
-                onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+              if (onError && lastErrorRef.current === 'network' && networkErrorCountRef.current >= maxNetworkErrors) {
+                if (isSafari) {
+                  onError('Safari\'de speech recognition için internet bağlantısı gereklidir. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.')
+                } else {
+                  onError('Speech recognition service is unavailable. Please check your internet connection and try again.')
+                }
               }
             }
           } catch (error) {
@@ -352,9 +372,9 @@ export function useVoiceRecognition({
             isResolvedRef.current = true
             lastErrorRef.current = null
           }
-        }, lastErrorRef.current === 'no-speech' ? 300 : 1000) // Faster restart for no-speech (300ms), slower for network (1s)
+        }, lastErrorRef.current === 'no-speech' ? 300 : (isSafari ? 500 : 1000)) // Faster restart for no-speech (300ms), Safari network (500ms), Chrome network (1s)
         return
-      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
+      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= maxNetworkErrors) {
         console.error('🎤 [VoiceRecognition] Too many network errors, not restarting', {
           errorCount: networkErrorCountRef.current,
         })
