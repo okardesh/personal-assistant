@@ -225,10 +225,23 @@ export function useVoiceRecognition({
           // Don't change isListening state - let onend handle restart
           return // Don't stop, don't notify
         case 'aborted':
-          // Don't notify for aborted - user likely stopped it manually
-          // Silently ignore
-          console.log('🎤 [VoiceRecognition] Recognition aborted')
-          return // Don't stop, don't notify
+          // "aborted" error in Safari often means recognition failed to start properly
+          // In Safari, we should try to restart
+          const isSafariAbort = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                                /iPad|iPhone|iPod/.test(navigator.userAgent)
+          
+          if (isSafariAbort) {
+            console.log('🎤 [VoiceRecognition] Safari: Recognition aborted - will restart on onend...', {
+              message: event.message,
+            })
+            // Store the error so we can restart in onend
+            lastErrorRef.current = 'aborted'
+            return // Don't stop, don't notify, but mark for restart
+          } else {
+            // For other browsers, aborted usually means user stopped it manually
+            console.log('🎤 [VoiceRecognition] Recognition aborted')
+            return // Don't stop, don't notify
+          }
         case 'audio-capture':
           errorMessage = 'No microphone found. Please check your microphone.'
           shouldNotify = true
@@ -350,10 +363,12 @@ export function useVoiceRecognition({
       
       const shouldRestart = 
         (lastErrorRef.current === 'network' && networkErrorCountRef.current < maxNetworkErrors) ||
-        (lastErrorRef.current === 'no-speech' && !isResolvedRef.current)
+        (lastErrorRef.current === 'no-speech' && !isResolvedRef.current) ||
+        (lastErrorRef.current === 'aborted' && isSafari && !isResolvedRef.current)
       
       if (shouldRestart && recognitionRef.current && !isRestartingRef.current) {
-        const errorType = lastErrorRef.current === 'network' ? 'Network' : 'No-speech'
+        const errorType = lastErrorRef.current === 'network' ? 'Network' : 
+                          lastErrorRef.current === 'aborted' ? 'Aborted' : 'No-speech'
         console.log(`🎤 [VoiceRecognition] onend - ${errorType} error detected, restarting...`, {
           errorCount: networkErrorCountRef.current,
           errorType: lastErrorRef.current,
@@ -367,10 +382,11 @@ export function useVoiceRecognition({
         // Restart after a longer delay to avoid rapid restarts
         restartTimeoutRef.current = setTimeout(() => {
           try {
-            // For no-speech, always try to restart if not resolved
+            // For no-speech and aborted (Safari), always try to restart if not resolved
             // For network, only restart if error count is below threshold
             const canRestart = 
               (lastErrorRef.current === 'no-speech' && !isResolvedRef.current) ||
+              (lastErrorRef.current === 'aborted' && isSafari && !isResolvedRef.current) ||
               (lastErrorRef.current === 'network' && !isResolvedRef.current && networkErrorCountRef.current < maxNetworkErrors)
             
             if (recognitionRef.current && canRestart) {
@@ -403,7 +419,9 @@ export function useVoiceRecognition({
             isResolvedRef.current = true
             lastErrorRef.current = null
           }
-        }, lastErrorRef.current === 'no-speech' ? 300 : (isSafari ? 500 : 1000)) // Faster restart for no-speech (300ms), Safari network (500ms), Chrome network (1s)
+        }, lastErrorRef.current === 'no-speech' ? 300 : 
+           lastErrorRef.current === 'aborted' ? 500 : 
+           (isSafari ? 500 : 1000)) // Faster restart for no-speech (300ms), aborted (500ms), Safari network (500ms), Chrome network (1s)
         return
       } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= maxNetworkErrors) {
         console.error('🎤 [VoiceRecognition] Too many network errors, not restarting', {
