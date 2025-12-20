@@ -100,9 +100,21 @@ export function useVoiceRecognition({
     setIsSupported(true)
     const recognition = new SpeechRecognition()
     
-    // Detect Safari
+    // Detect Safari and other browsers
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
                      /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isChrome = /chrome/i.test(navigator.userAgent) && !/edge/i.test(navigator.userAgent)
+    const isEdge = /edge/i.test(navigator.userAgent)
+    const isFirefox = /firefox/i.test(navigator.userAgent)
+    
+    // Log browser detection for debugging
+    console.log('🎤 [VoiceRecognition] Browser detection:', {
+      userAgent: navigator.userAgent.substring(0, 50) + '...',
+      isSafari,
+      isChrome,
+      isEdge,
+      isFirefox,
+    })
     
     // Safari has different behavior - continuous mode may not work the same way
     // Safari may need continuous=false and manual restart handling
@@ -267,8 +279,9 @@ export function useVoiceRecognition({
             isSafari,
           })
           
-          // Safari may have persistent network errors - be more lenient
-          const maxNetworkErrors = isSafari ? 5 : 3
+          // Safari and some browsers may have persistent network errors - be more lenient
+          // ChatGPT Atlas or other extensions may also have network issues
+          const maxNetworkErrors = isSafari ? 5 : 5 // Increase for all browsers to handle extension issues
           
           // If too many network errors in a short time, stop trying
           if (networkErrorCountRef.current >= maxNetworkErrors) {
