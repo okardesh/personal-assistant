@@ -221,7 +221,7 @@ export default function Home() {
               style={{ animationDelay: '0.2s' }}
             />
             <h1 className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 via-pink-600 to-rose-600 bg-clip-text text-transparent dark:from-orange-400 dark:via-pink-400 dark:to-rose-400">
-              Personal Assistant
+              Wise Assistant
             </h1>
           </div>
           <p className="text-slate-700 dark:text-slate-300 text-lg font-medium">
