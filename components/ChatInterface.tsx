@@ -6,6 +6,7 @@ import { Send, Loader2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import { format } from 'date-fns'
 import { useVoiceRecognition } from '@/lib/useVoiceRecognition'
 import { useTextToSpeech } from '@/lib/useTextToSpeech'
+import { useOpenAITTS } from '@/lib/useOpenAITTS'
 
 interface ChatInterfaceProps {
   messages: Message[]
