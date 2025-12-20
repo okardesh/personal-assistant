@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { useVoiceRecognition } from '@/lib/useVoiceRecognition'
 import { useTextToSpeech } from '@/lib/useTextToSpeech'
 import { useOpenAITTS } from '@/lib/useOpenAITTS'
+import { useOpenAITTS } from '@/lib/useOpenAITTS'
 
 interface ChatInterfaceProps {
   messages: Message[]
@@ -48,14 +49,35 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
     autoSubmit: true, // Auto-submit after silence
   })
 
-  // Text-to-speech
-  const { speak, stop: stopSpeaking, isSpeaking } = useTextToSpeech({
+  // Text-to-speech - Use OpenAI TTS for more natural voice
+  const { 
+    speak: speakOpenAI, 
+    stop: stopSpeaking, 
+    isSpeaking,
+    isLoading: isTTSLoading 
+  } = useOpenAITTS({
     enabled: autoSpeak,
+    voice: 'nova', // Most natural-sounding voice
+  })
+
+  // Fallback to Web Speech API if OpenAI TTS fails
+  const { speak: speakFallback } = useTextToSpeech({
+    enabled: false, // Disabled by default, only used as fallback
     language: 'tr-TR',
     rate: 1.0,
     pitch: 1.0,
     volume: 1.0,
   })
+
+  // Use OpenAI TTS, fallback to Web Speech API
+  const speak = async (text: string) => {
+    try {
+      await speakOpenAI(text)
+    } catch (error) {
+      console.warn('OpenAI TTS failed, using fallback:', error)
+      speakFallback(text)
+    }
+  }
 
   // Auto-speak assistant responses
   useEffect(() => {
