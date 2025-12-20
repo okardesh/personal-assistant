@@ -7,7 +7,6 @@ import { format } from 'date-fns'
 import { useVoiceRecognition } from '@/lib/useVoiceRecognition'
 import { useTextToSpeech } from '@/lib/useTextToSpeech'
 import { useOpenAITTS } from '@/lib/useOpenAITTS'
-import { useOpenAITTS } from '@/lib/useOpenAITTS'
 
 interface ChatInterfaceProps {
   messages: Message[]
