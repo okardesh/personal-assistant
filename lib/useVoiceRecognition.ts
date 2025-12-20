@@ -105,11 +105,12 @@ export function useVoiceRecognition({
                      /iPad|iPhone|iPod/.test(navigator.userAgent)
     
     // Safari has different behavior - continuous mode may not work the same way
-    // Use continuous mode for Chrome/Edge, but be more careful with Safari
+    // Safari may need continuous=false and manual restart handling
     if (isSafari) {
       console.log('🎤 [VoiceRecognition] Safari detected - using Safari-specific settings')
-      // Safari may have issues with continuous=true, so we'll handle it differently
-      recognition.continuous = true
+      // Safari may have issues with continuous=true
+      // Try continuous=false first, and we'll handle restart manually
+      recognition.continuous = false
       recognition.interimResults = true
     } else {
       // Chrome/Edge
@@ -309,12 +310,16 @@ export function useVoiceRecognition({
     }
 
     recognition.onend = () => {
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                       /iPad|iPhone|iPod/.test(navigator.userAgent)
+      
       console.log('🎤 [VoiceRecognition] onend', {
         isResolved: isResolvedRef.current,
         isListening,
         accumulatedText: accumulatedTextRef.current,
         hasSilenceTimeout: !!silenceTimeoutRef.current,
         lastError: lastErrorRef.current,
+        isSafari,
       })
       
       // Clear any pending restart
@@ -323,12 +328,20 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       
+      // Safari-specific: If onend fires immediately after start (before onstart),
+      // it means recognition failed to start. Try to restart.
+      if (isSafari && !isResolvedRef.current && lastErrorRef.current === null && accumulatedTextRef.current === '') {
+        console.log('🎤 [VoiceRecognition] Safari: onend fired without onstart - recognition may have failed to start, will retry...')
+        // This is likely a Safari quirk - recognition didn't actually start
+        // Reset and try again
+        isRestartingRef.current = true
+        lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
+      }
+      
       // If it ended due to a network error or no-speech, try to restart
       // Network errors and no-speech are transient and should trigger a restart
       // But only if we haven't exceeded the error limit
       // IMPORTANT: Check lastError BEFORE checking isResolved, and don't clear it until after restart
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
-                       /iPad|iPhone|iPod/.test(navigator.userAgent)
       const maxNetworkErrors = isSafari ? 5 : 3
       
       const shouldRestart = 
