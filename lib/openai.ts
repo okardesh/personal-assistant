@@ -1214,8 +1214,24 @@ Note: Email body not retrieved, but provide information based on available detai
                 }
               } catch (error) {
                 console.error('Error controlling HomeKit device:', error)
+                const errorMessage = error instanceof Error ? error.message : 'Failed to control device'
+                
+                // Provide more helpful error messages
+                let userFriendlyError = errorMessage
+                
+                if (errorMessage.includes('not configured')) {
+                  userFriendlyError = 'Home Assistant yapılandırılmamış. Lütfen environment variables\'ların doğru eklendiğinden emin olun.'
+                } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+                  userFriendlyError = 'Home Assistant yetkilendirme hatası. Token\'ın geçerli olduğundan emin olun.'
+                } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+                  userFriendlyError = `Cihaz bulunamadı. Entity ID'yi kontrol edin: ${targetEntityId || deviceName || 'bilinmiyor'}`
+                } else if (errorMessage.includes('Connection') || errorMessage.includes('Network')) {
+                  userFriendlyError = 'Home Assistant\'a bağlanılamıyor. URL\'nin doğru olduğundan emin olun.'
+                }
+                
                 functionResult = {
-                  error: error instanceof Error ? error.message : 'Failed to control device',
+                  error: userFriendlyError,
+                  technicalError: errorMessage, // Keep technical error for debugging
                 }
               }
             }
