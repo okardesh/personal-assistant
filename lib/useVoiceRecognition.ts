@@ -259,19 +259,13 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       
-      // If we explicitly stopped it, don't restart
-      if (isResolvedRef.current) {
-        console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting')
-        setIsListening(false)
-        isRestartingRef.current = false
-        lastErrorRef.current = null
-        return
-      }
-      
-      // If it ended due to a network error, try to restart
+      // If it ended due to a network error, try to restart (even if isResolved is true)
+      // Network errors are transient and should trigger a restart
       if (lastErrorRef.current === 'network' && recognitionRef.current && !isRestartingRef.current) {
         console.log('🎤 [VoiceRecognition] onend - Network error detected, restarting...')
         isRestartingRef.current = true
+        // Reset isResolved so we can restart
+        isResolvedRef.current = false
         lastErrorRef.current = null
         
         // Restart after a short delay
@@ -282,14 +276,25 @@ export function useVoiceRecognition({
               recognitionRef.current.start()
               isRestartingRef.current = false
             } else {
+              console.log('🎤 [VoiceRecognition] Cannot restart - recognition resolved or not available')
               isRestartingRef.current = false
             }
           } catch (error) {
             console.error('🎤 [VoiceRecognition] Error restarting after network error:', error)
             isRestartingRef.current = false
             setIsListening(false)
+            isResolvedRef.current = true
           }
         }, 500) // Wait 500ms before restarting
+        return
+      }
+      
+      // If we explicitly stopped it (and it's not a network error), don't restart
+      if (isResolvedRef.current) {
+        console.log('🎤 [VoiceRecognition] onend - Explicitly stopped, not restarting')
+        setIsListening(false)
+        isRestartingRef.current = false
+        lastErrorRef.current = null
         return
       }
       
