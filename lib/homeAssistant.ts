@@ -34,8 +34,9 @@ function getHomeAssistantConfig(): HomeAssistantConfig | null {
 
 /**
  * Get all devices from Home Assistant
+ * Optionally filter by controllable device types (light, switch, cover, climate, etc.)
  */
-export async function getHomeAssistantDevices(): Promise<HomeAssistantDevice[]> {
+export async function getHomeAssistantDevices(filterControllable: boolean = false): Promise<HomeAssistantDevice[]> {
   const config = getHomeAssistantConfig()
   if (!config) {
     throw new Error('Home Assistant is not configured. Please set HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.')
@@ -54,6 +55,21 @@ export async function getHomeAssistantDevices(): Promise<HomeAssistantDevice[]> 
     }
 
     const devices = await response.json()
+    
+    // Filter to only controllable devices if requested
+    if (filterControllable) {
+      const controllableDomains = [
+        'light', 'switch', 'cover', 'climate', 'fan', 'lock', 
+        'media_player', 'vacuum', 'scene', 'script', 'input_boolean',
+        'input_number', 'input_select', 'input_text'
+      ]
+      
+      return devices.filter((device: HomeAssistantDevice) => {
+        const domain = device.entity_id.split('.')[0]
+        return controllableDomains.includes(domain)
+      })
+    }
+    
     return devices
   } catch (error) {
     console.error('Error fetching Home Assistant devices:', error)

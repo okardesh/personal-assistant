@@ -27,10 +27,15 @@ export async function GET(request: NextRequest) {
     const entityId = searchParams.get('entity_id')
     const query = searchParams.get('query')
 
-    // List all devices
+    // List all devices (filter to only controllable devices by default)
     if (action === 'list' || !action) {
-      const devices = await getHomeAssistantDevices()
-      return NextResponse.json({ devices })
+      const filterControllable = searchParams.get('all') !== 'true'
+      const devices = await getHomeAssistantDevices(filterControllable)
+      return NextResponse.json({ 
+        devices,
+        filtered: filterControllable,
+        total: devices.length
+      })
     }
 
     // Search devices
