@@ -96,7 +96,9 @@ export function useVoiceRecognition({
 
     setIsSupported(true)
     const recognition = new SpeechRecognition()
-    recognition.continuous = continuous
+    // Always use continuous=true to keep recognition active until silence timeout
+    // This prevents recognition from stopping after first result
+    recognition.continuous = true
     recognition.interimResults = true // Show interim results for better UX
     recognition.lang = language
 
@@ -206,39 +208,20 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       
-      // Only set listening to false if we explicitly stopped it
+      // If we explicitly stopped it, don't restart
       if (isResolvedRef.current) {
         setIsListening(false)
         isRestartingRef.current = false
         return
       }
       
-      // If not explicitly stopped, check if we should restart
-      // Only restart in continuous mode, and only if we're not already restarting
-      if (recognitionRef.current && !isResolvedRef.current && continuous && !isRestartingRef.current) {
-        isRestartingRef.current = true
-        
-        // Longer delay before restarting to avoid rapid restarts
-        restartTimeoutRef.current = setTimeout(() => {
-          try {
-            if (recognitionRef.current && !isResolvedRef.current) {
-              console.log('🔄 Restarting speech recognition (continuous mode)')
-              recognitionRef.current.start()
-              isRestartingRef.current = false
-            } else {
-              isRestartingRef.current = false
-            }
-          } catch (error) {
-            // Ignore errors when restarting (might already be started)
-            console.log('Speech recognition restart error:', error instanceof Error ? error.message : 'unknown')
-            isRestartingRef.current = false
-            setIsListening(false)
-          }
-        }, 300) // Increased delay to prevent rapid restarts
-      } else {
-        setIsListening(false)
-        isRestartingRef.current = false
-      }
+      // If not explicitly stopped and we have accumulated text, we might want to restart
+      // But only if silence timeout hasn't fired yet
+      // Actually, with continuous=true, onend should rarely fire
+      // If it does fire, it's likely because of an error or browser limitation
+      // In that case, don't restart to avoid loops
+      setIsListening(false)
+      isRestartingRef.current = false
     }
 
     recognitionRef.current = recognition
