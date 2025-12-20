@@ -43,7 +43,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
       }
     },
     language: 'tr-TR',
-    continuous: true, // Keep listening until silence timeout or manual stop
+    continuous: false, // Set to false to prevent infinite restart loops - silence timeout will handle stopping
     silenceTimeout: 2000, // 2 seconds of silence before auto-stop
     autoSubmit: true, // Auto-submit after silence
   })
