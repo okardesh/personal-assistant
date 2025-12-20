@@ -255,7 +255,7 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
             type="button"
             onClick={() => {
               setAutoSpeak(!autoSpeak)
-              if (autoSpeak && isSpeaking()) {
+              if (autoSpeak && isSpeaking) {
                 stopSpeaking()
               }
             }}
