@@ -181,27 +181,40 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
   }
 
   return (
-    <div className="flex flex-col h-[80vh] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700">
+    <div className="flex flex-col h-[85vh] bg-gradient-to-br from-white via-slate-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm overflow-hidden">
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((message) => (
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+        {messages.map((message, index) => (
           <div
             key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex items-start gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+            style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
-              }`}
-            >
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
-              <p
-                className={`text-xs mt-1 ${
+            {/* Avatar */}
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-lg ${
+              message.role === 'user'
+                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
+                : 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-slate-700 dark:text-slate-200'
+            }`}>
+              {message.role === 'user' ? 'S' : 'AI'}
+            </div>
+            
+            {/* Message Bubble */}
+            <div className={`flex flex-col gap-1 max-w-[75%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div
+                className={`rounded-2xl px-5 py-3 shadow-lg transition-all duration-300 ${
                   message.role === 'user'
-                    ? 'text-blue-100'
-                    : 'text-slate-500 dark:text-slate-400'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm'
+                    : 'bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 rounded-tl-sm backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50'
+                }`}
+              >
+                <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px]">{message.content}</p>
+              </div>
+              <p
+                className={`text-xs px-2 ${
+                  message.role === 'user'
+                    ? 'text-slate-500 dark:text-slate-400'
+                    : 'text-slate-400 dark:text-slate-500'
                 }`}
               >
                 {format(message.timestamp, 'HH:mm')}
@@ -210,9 +223,16 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-slate-100 dark:bg-slate-700 rounded-lg px-4 py-2">
-              <Loader2 className="w-5 h-5 animate-spin text-slate-600 dark:text-slate-400" />
+          <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-slate-700 dark:text-slate-200 shadow-lg">
+              AI
+            </div>
+            <div className="bg-white/90 dark:bg-slate-800/90 rounded-2xl rounded-tl-sm px-5 py-3 shadow-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
             </div>
           </div>
         )}
@@ -220,20 +240,20 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-slate-200 dark:border-slate-700 p-4">
+      <div className="border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4">
         {/* Voice Controls */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             {isVoiceSupported && (
               <button
                 type="button"
                 onClick={handleVoiceToggle}
                 disabled={isLoading}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
                   isListening
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    ? 'bg-gradient-to-br from-red-500 to-red-600 text-white animate-pulse'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                 title={isListening ? 'Stop recording' : 'Start voice input'}
               >
                 {isListening ? (
@@ -244,9 +264,9 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
               </button>
             )}
             {isListening && (
-              <span className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+              <span className="text-sm font-medium text-red-600 dark:text-red-400 flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                Listening...
+                Dinleniyor...
               </span>
             )}
           </div>
@@ -258,10 +278,10 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
                 stopSpeaking()
               }
             }}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 ${
               autoSpeak
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
             title={autoSpeak ? 'Disable auto-speak' : 'Enable auto-speak'}
           >
@@ -272,21 +292,23 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
             )}
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isListening ? "Listening..." : "Type your command or question..."}
-            className="flex-1 resize-none rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-3 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32"
-            rows={1}
-            disabled={isLoading || isListening}
-          />
+        <form onSubmit={handleSubmit} className="flex gap-3">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isListening ? "Dinleniyor..." : "Mesajınızı yazın veya soru sorun..."}
+              className="w-full resize-none rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 max-h-32 shadow-sm"
+              rows={1}
+              disabled={isLoading || isListening}
+            />
+          </div>
           <button
             type="submit"
             disabled={!input.trim() || isLoading || isListening}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="px-6 py-3.5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:hover:scale-100 font-medium"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
