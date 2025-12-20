@@ -333,15 +333,19 @@ When displaying calendar events, format them nicely:
 - For today: "📅 Bugünkü Etkinlikleriniz:\n\n⏰ 14:30 - Toplantı 📍 İstanbul\n⏰ 16:00 - Randevu"
 - For tomorrow: "📅 Yarınki Etkinlikleriniz:\n\n⏰ 10:00 - Toplantı 📍 İstanbul\n⏰ 14:00 - Randevu"
 
-CRITICAL: When user asks "sırada ne var", "sonraki etkinlik", "what's next", "next event", or similar questions:
-- ALWAYS check the CURRENT TIME first (provided above)
+CRITICAL: When user asks "sırada ne var", "sonraki etkinlik", "what's next", "next event", "bugun takvimde sirada ne var", or similar questions about what's coming up:
+- ALWAYS check the CURRENT TIME first (provided above in CURRENT DATE AND TIME section)
 - Get today's calendar events using get_calendar_events with period='today'
+- The response will include a "currentTime" field (e.g., "10:36") - USE THIS to filter events
 - Filter events to find the NEXT event that starts AFTER the current time
-- If current time is 10:36, find events that start after 10:36 today
+- Compare event times (in "time" field, format "HH:mm") with currentTime
+- If current time is 10:36, find events that start after 10:36 today (e.g., 13:00, 19:00)
 - Show ONLY the next upcoming event, not all events
 - Format: "⏰ [Time] - [Event Title] 📍 [Location if available]"
-- If no events remain today, check tomorrow's events
-- Example: If current time is 10:36 and events are [07:30, 13:00, 19:00], show only "⏰ 13:00 - Çocuk Tiyatrosu 📍 Caddebostan Kültür Merkezi"
+- If no events remain today, check tomorrow's events using period='tomorrow' and show the first event
+- Example: If current time is 10:36 and today's events are [07:30, 13:00, 19:00], show only "⏰ 13:00 - Çocuk Tiyatrosu 📍 Caddebostan Kültür Merkezi"
+- DO NOT show past events (events before current time)
+- DO NOT show all events - only the NEXT one
 - For week: Include date for each event: "📅 Bu Haftaki Etkinlikleriniz:\n\n📆 Pazartesi, 18 Aralık\n⏰ 14:30 - Toplantı 📍 İstanbul\n\n📆 Salı, 19 Aralık\n⏰ 10:00 - Randevu"
 - Do NOT include description/notes in the response
 - Keep it clean and organized
