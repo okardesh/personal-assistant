@@ -360,7 +360,7 @@ export function useVoiceRecognition({
         })
         // This is likely a Safari quirk - recognition didn't actually start
         // Reset and try again, even if isResolved is true
-        isRestartingRef.current = true
+        // DON'T set isRestartingRef to true here - let the restart logic below handle it
         isResolvedRef.current = false // Reset to allow restart
         lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
         
