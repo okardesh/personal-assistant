@@ -186,42 +186,53 @@ export function useVoiceRecognition({
         isListening,
       })
       
-      setIsListening(false)
       let errorMessage = ''
       let shouldNotify = false
+      let shouldStop = false
       
       switch (event.error) {
         case 'no-speech':
           // Don't notify for no-speech errors - this is normal when user stops talking
           // But don't stop recognition - let it continue
           console.log('🎤 [VoiceRecognition] No speech detected - continuing...')
-          return
+          return // Don't stop, don't notify
         case 'aborted':
           // Don't notify for aborted - user likely stopped it manually
           // Silently ignore
           console.log('🎤 [VoiceRecognition] Recognition aborted')
-          return
+          return // Don't stop, don't notify
         case 'audio-capture':
           errorMessage = 'No microphone found. Please check your microphone.'
           shouldNotify = true
+          shouldStop = true
           break
         case 'network':
-          // Network errors are common and transient - silently ignore
+          // Network errors are common and transient - don't stop recognition
           // Speech Recognition API requires internet connection in Chrome
-          console.log('🎤 [VoiceRecognition] Network error - continuing...')
-          return
+          console.log('🎤 [VoiceRecognition] Network error - continuing (not stopping)...')
+          // Don't stop recognition for network errors - they're often transient
+          return // Don't stop, don't notify
         case 'not-allowed':
           errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.'
           shouldNotify = true
+          shouldStop = true
           break
         case 'service-not-allowed':
           errorMessage = 'Speech recognition service not allowed. Please check your browser settings.'
           shouldNotify = true
+          shouldStop = true
           break
         default:
-          // Log unknown errors but don't stop
-          console.log('🎤 [VoiceRecognition] Unknown error:', event.error)
-          return
+          // Log unknown errors but don't stop - might be transient
+          console.log('🎤 [VoiceRecognition] Unknown error:', event.error, '- continuing...')
+          return // Don't stop for unknown errors
+      }
+      
+      // Only stop for critical errors
+      if (shouldStop) {
+        console.log('🎤 [VoiceRecognition] Stopping due to critical error:', event.error)
+        setIsListening(false)
+        isResolvedRef.current = true
       }
       
       // Only notify user for critical errors
