@@ -385,7 +385,7 @@ export function useVoiceRecognition({
       // Network errors and no-speech are transient and should trigger a restart
       // But only if we haven't exceeded the error limit
       // IMPORTANT: Check lastError BEFORE checking isResolved, and don't clear it until after restart
-      const maxNetworkErrors = isSafari ? 5 : 3
+      const maxNetworkErrors = isSafari ? 5 : 5 // Increased for all browsers to handle extension issues
       
       const shouldRestart = 
         (lastErrorRef.current === 'network' && networkErrorCountRef.current < maxNetworkErrors) ||
