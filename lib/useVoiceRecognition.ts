@@ -341,6 +341,16 @@ export function useVoiceRecognition({
         restartTimeoutRef.current = null
       }
       
+      // Safari-specific: If aborted error occurred, reset isResolved to allow restart
+      // Safari's "aborted" error with "Corrupt" message is often recoverable
+      // IMPORTANT: Check this BEFORE checking isResolved, so we can reset it
+      if (isSafari && lastErrorRef.current === 'aborted') {
+        console.log('🎤 [VoiceRecognition] Safari: aborted error detected, resetting isResolved to allow restart', {
+          isResolved: isResolvedRef.current,
+        })
+        isResolvedRef.current = false // Reset to allow restart
+      }
+      
       // Safari-specific: If onend fires immediately after start (before onstart),
       // it means recognition failed to start. Try to restart.
       // Even if isResolved is true, we should try to restart in Safari
@@ -353,13 +363,6 @@ export function useVoiceRecognition({
         isRestartingRef.current = true
         isResolvedRef.current = false // Reset to allow restart
         lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
-      }
-      
-      // Safari-specific: If aborted error occurred, reset isResolved to allow restart
-      // Safari's "aborted" error with "Corrupt" message is often recoverable
-      if (isSafari && lastErrorRef.current === 'aborted' && isResolvedRef.current) {
-        console.log('🎤 [VoiceRecognition] Safari: aborted error detected, resetting isResolved to allow restart')
-        isResolvedRef.current = false // Reset to allow restart
       }
       
       // If it ended due to a network error or no-speech, try to restart
