@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import { getCalendarEvents } from './calendar'
 import { getEmails } from './email'
 import {
+  getHomeAssistantDevices,
   searchDevices,
   turnOnDevice,
   turnOffDevice,
@@ -220,6 +221,14 @@ const functions = [
         },
       },
       required: ['destination'],
+    },
+  },
+  {
+    name: 'list_controllable_devices',
+    description: 'List all controllable smart home devices available in Home Assistant. Use this when the user asks "hangi cihazları kontrol edebiliyorsun?", "cihazları listele", "ne tür cihazlar var?", "what devices can you control?", "list devices", "show me available devices". This function returns a list of all controllable devices (lights, switches, vacuum cleaners, media players, etc.) with their names and entity IDs.',
+    parameters: {
+      type: 'object',
+      properties: {},
     },
   },
   {
@@ -1041,6 +1050,61 @@ Note: Email body not retrieved, but provide information based on available detai
                 functionResult = { 
                   error: error instanceof Error ? error.message : 'Failed to get directions' 
                 }
+              }
+            }
+          } else if (functionName === 'list_controllable_devices') {
+            try {
+              const devices = await getHomeAssistantDevices(true) // Filter to only controllable devices
+              
+              // Group devices by type
+              const devicesByType: Record<string, any[]> = {}
+              
+              devices.forEach((device: any) => {
+                const domain = device.entity_id.split('.')[0]
+                if (!devicesByType[domain]) {
+                  devicesByType[domain] = []
+                }
+                devicesByType[domain].push({
+                  entity_id: device.entity_id,
+                  name: device.attributes.friendly_name || device.entity_id,
+                  state: device.state,
+                })
+              })
+              
+              // Format for user-friendly display
+              const deviceTypes: Record<string, string> = {
+                light: 'Işıklar',
+                switch: 'Anahtarlar',
+                cover: 'Perdeler',
+                climate: 'Termostatlar',
+                fan: 'Fanlar',
+                lock: 'Kilitler',
+                media_player: 'Medya Oynatıcılar',
+                vacuum: 'Süpürgeler',
+                scene: 'Sahneler',
+                script: 'Scriptler',
+                input_boolean: 'Boolean Girişler',
+                input_number: 'Sayısal Girişler',
+                input_select: 'Seçim Girişleri',
+                input_text: 'Metin Girişleri',
+              }
+              
+              const formattedDevices = Object.entries(devicesByType).map(([domain, deviceList]) => ({
+                type: deviceTypes[domain] || domain,
+                domain: domain,
+                count: deviceList.length,
+                devices: deviceList,
+              }))
+              
+              functionResult = {
+                totalDevices: devices.length,
+                deviceTypes: formattedDevices,
+                summary: `Toplam ${devices.length} kontrol edilebilir cihaz bulundu.`,
+              }
+            } catch (error) {
+              console.error('Error listing devices:', error)
+              functionResult = {
+                error: error instanceof Error ? error.message : 'Failed to list devices',
               }
             }
           } else if (functionName === 'control_homekit_device') {
