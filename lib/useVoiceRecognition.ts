@@ -330,11 +330,15 @@ export function useVoiceRecognition({
       
       // Safari-specific: If onend fires immediately after start (before onstart),
       // it means recognition failed to start. Try to restart.
-      if (isSafari && !isResolvedRef.current && lastErrorRef.current === null && accumulatedTextRef.current === '') {
-        console.log('🎤 [VoiceRecognition] Safari: onend fired without onstart - recognition may have failed to start, will retry...')
+      // Even if isResolved is true, we should try to restart in Safari
+      if (isSafari && lastErrorRef.current === null && accumulatedTextRef.current === '' && !isRestartingRef.current) {
+        console.log('🎤 [VoiceRecognition] Safari: onend fired without onstart - recognition may have failed to start, will retry...', {
+          isResolved: isResolvedRef.current,
+        })
         // This is likely a Safari quirk - recognition didn't actually start
-        // Reset and try again
+        // Reset and try again, even if isResolved is true
         isRestartingRef.current = true
+        isResolvedRef.current = false // Reset to allow restart
         lastErrorRef.current = 'no-speech' // Treat as no-speech to trigger restart
       }
       
