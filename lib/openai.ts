@@ -368,6 +368,7 @@ export async function chatWithOpenAI(
     if (userContext) {
       if (userContext.name) {
         userContextString += `\n\nUSER INFORMATION:\n- User's name: ${userContext.name}\n- Always address the user by their name when appropriate. Remember their name and use it naturally in conversations.`
+        console.log('👤 [OpenAI] User context includes name:', userContext.name)
       }
       if (userContext.preferences) {
         const prefs = Object.entries(userContext.preferences)
@@ -383,6 +384,25 @@ export async function chatWithOpenAI(
           .join('\n')
         if (metadata) {
           userContextString += `\n- Additional context:\n${metadata}`
+        }
+      }
+    } else {
+      console.log('👤 [OpenAI] No user context provided')
+    }
+    
+    // Also try to extract name from conversation history if not in context
+    if (!userContextString.includes('User\'s name:')) {
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          const nameMatch = msg.content.match(/(?:benim adım|adım|merhaba ben|ben) (.+?)(?:\.|$|,|\s|$)/i)
+          if (nameMatch && nameMatch[1]) {
+            const extractedName = nameMatch[1].trim()
+            if (extractedName.length > 1 && extractedName.length < 50) {
+              userContextString += `\n\nUSER INFORMATION:\n- User's name: ${extractedName}\n- Always address the user by their name when appropriate. Remember their name and use it naturally in conversations.`
+              console.log('👤 [OpenAI] Extracted name from conversation:', extractedName)
+              break
+            }
+          }
         }
       }
     }
