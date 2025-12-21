@@ -284,6 +284,14 @@ export async function chatWithOpenAI(
     'list devices',
     'show me available devices',
     'hangi cihazlar var',
+    'evdeki eşyaları kontrol',
+    'evdeki hangi eşyaları',
+    'hangi eşyaları kontrol',
+    'evdeki cihazlar',
+    'akıllı cihazlar',
+    'smart devices',
+    'home devices',
+    'evdeki hangi',
   ]
   
   if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword))) {
