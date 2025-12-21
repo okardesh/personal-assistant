@@ -39,10 +39,12 @@ function getHomeAssistantConfig(): HomeAssistantConfig | null {
 export async function getHomeAssistantDevices(filterControllable: boolean = false): Promise<HomeAssistantDevice[]> {
   const config = getHomeAssistantConfig()
   if (!config) {
+    console.error('🏠 [HomeAssistant] Configuration missing')
     throw new Error('Home Assistant is not configured. Please set HOME_ASSISTANT_URL and HOME_ASSISTANT_ACCESS_TOKEN environment variables.')
   }
 
   try {
+    console.log('🏠 [HomeAssistant] Fetching devices from:', config.baseUrl)
     const response = await fetch(`${config.baseUrl}/api/states`, {
       headers: {
         'Authorization': `Bearer ${config.accessToken}`,
@@ -51,10 +53,13 @@ export async function getHomeAssistantDevices(filterControllable: boolean = fals
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('🏠 [HomeAssistant] API error:', response.status, response.statusText, errorText)
       throw new Error(`Home Assistant API error: ${response.status} ${response.statusText}`)
     }
 
     const devices = await response.json()
+    console.log('🏠 [HomeAssistant] Received', devices.length, 'total devices')
     
     // Filter to only controllable devices if requested
     if (filterControllable) {
@@ -64,15 +69,17 @@ export async function getHomeAssistantDevices(filterControllable: boolean = fals
         'input_number', 'input_select', 'input_text'
       ]
       
-      return devices.filter((device: HomeAssistantDevice) => {
+      const filtered = devices.filter((device: HomeAssistantDevice) => {
         const domain = device.entity_id.split('.')[0]
         return controllableDomains.includes(domain)
       })
+      console.log('🏠 [HomeAssistant] Filtered to', filtered.length, 'controllable devices')
+      return filtered
     }
     
     return devices
   } catch (error) {
-    console.error('Error fetching Home Assistant devices:', error)
+    console.error('🏠 [HomeAssistant] Error fetching devices:', error)
     throw error
   }
 }
