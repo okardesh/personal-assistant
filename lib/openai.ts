@@ -294,7 +294,7 @@ export async function chatWithOpenAI(
     'evdeki hangi',
   ]
   
-  if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword))) {
+  if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword)) || isRetryAfterDeviceQuery) {
     try {
       console.log('🏠 [OpenAI] Fetching Home Assistant devices...')
       const devices = await getHomeAssistantDevices(true) // Filter to only controllable devices
