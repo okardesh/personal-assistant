@@ -262,7 +262,8 @@ const functions = [
 
 export async function chatWithOpenAI(
   messages: Message[],
-  location?: Location | null
+  location?: Location | null,
+  userContext?: { name?: string; preferences?: any; metadata?: any } | null
 ): Promise<{ response: string; spotifyAction?: any }> {
   if (!process.env.OPENAI_API_KEY) {
     return { response: 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.' }

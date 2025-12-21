@@ -5,9 +5,63 @@ import ChatInterface from '@/components/ChatInterface'
 import { Message } from '@/types/chat'
 import { getClientLocation } from '@/lib/locationClient'
 import { useSpotify } from '@/lib/useSpotify'
+import { 
+  saveMessages, 
+  loadMessages, 
+  loadUserContext, 
+  updateUserContext,
+  extractUserInfoFromMessages,
+  StoredMessage 
+} from '@/lib/storage'
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([])
+  const [userContext, setUserContext] = useState(loadUserContext())
+  
+  // Load messages and user context on mount
+  useEffect(() => {
+    const storedMessages = loadMessages()
+    if (storedMessages.length > 0) {
+      // Convert stored messages to Message format
+      const loadedMessages: Message[] = storedMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        spotifyAction: msg.spotifyAction,
+      }))
+      setMessages(loadedMessages)
+      console.log('📚 Loaded', loadedMessages.length, 'messages from storage')
+    }
+    
+    // Load user context
+    const context = loadUserContext()
+    if (context) {
+      setUserContext(context)
+      console.log('👤 Loaded user context:', context)
+    }
+  }, [])
+  
+  // Save messages whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      const messagesToSave: StoredMessage[] = messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        spotifyAction: msg.spotifyAction,
+      }))
+      saveMessages(messagesToSave)
+      
+      // Extract user info from messages and update context
+      const extractedInfo = extractUserInfoFromMessages(messagesToSave)
+      if (extractedInfo.name && (!userContext || userContext.name !== extractedInfo.name)) {
+        updateUserContext(extractedInfo)
+        setUserContext(prev => ({ ...prev, ...extractedInfo }))
+      }
+    }
+  }, [messages, userContext])
 
   // Spotify integration
   const spotify = useSpotify()

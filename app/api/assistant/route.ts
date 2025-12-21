@@ -8,7 +8,7 @@ interface Message {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, location, conversationHistory } = await request.json()
+    const { message, location, conversationHistory, userContext } = await request.json()
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Use OpenAI for intelligent responses
-    const result = await chatWithOpenAI(messages, location)
+    const result = await chatWithOpenAI(messages, location, userContext)
 
     return NextResponse.json({ 
       response: result.response,
