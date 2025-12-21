@@ -12,6 +12,7 @@ export function useOpenAITTS({
   voice = 'nova', // 'nova' is OpenAI's most natural-sounding voice
 }: UseOpenAITTSOptions = {}) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const blobUrlRef = useRef<string | null>(null) // Track current blob URL
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -19,7 +20,7 @@ export function useOpenAITTS({
     if (!enabled || typeof window === 'undefined' || !text.trim()) return
 
     try {
-      // Stop any ongoing speech
+      // Stop any ongoing speech and clean up
       stop()
 
       setIsLoading(true)
@@ -40,8 +41,7 @@ export function useOpenAITTS({
         throw new Error(`TTS API error: ${response.status}`)
       }
 
-      // Create audio element
-      const audio = new Audio()
+      // Get blob
       const blob = await response.blob()
       
       // Check if blob is valid
@@ -49,11 +49,13 @@ export function useOpenAITTS({
         throw new Error('Invalid audio blob received')
       }
       
+      // Create new blob URL
       const url = URL.createObjectURL(blob)
-      audio.src = url
+      blobUrlRef.current = url
 
-      // Store URL for cleanup
-      const currentUrl = url
+      // Create new audio element (don't reuse old one)
+      const audio = new Audio()
+      audio.src = url
 
       // Handle audio events
       audio.onplay = () => {
@@ -65,8 +67,13 @@ export function useOpenAITTS({
         setIsSpeaking(false)
         setIsLoading(false)
         // Clean up blob URL
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl)
+        if (blobUrlRef.current) {
+          try {
+            URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = null
+          } catch (e) {
+            console.warn('Error revoking blob URL on ended:', e)
+          }
         }
       }
 
@@ -75,26 +82,17 @@ export function useOpenAITTS({
         setIsSpeaking(false)
         setIsLoading(false)
         // Clean up blob URL
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl)
-        }
-      }
-
-      // Clean up previous audio if exists
-      if (audioRef.current) {
-        const prevSrc = audioRef.current.src
-        audioRef.current.pause()
-        audioRef.current.src = ''
-        // Revoke previous blob URL if it was a blob URL
-        if (prevSrc && prevSrc.startsWith('blob:')) {
+        if (blobUrlRef.current) {
           try {
-            URL.revokeObjectURL(prevSrc)
+            URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = null
           } catch (e) {
-            // Ignore errors when revoking
+            console.warn('Error revoking blob URL on error:', e)
           }
         }
       }
 
+      // Store audio reference
       audioRef.current = audio
       
       // Play audio with error handling
@@ -104,31 +102,48 @@ export function useOpenAITTS({
         console.error('Error playing audio:', playError)
         setIsSpeaking(false)
         setIsLoading(false)
-        URL.revokeObjectURL(currentUrl)
+        // Clean up on play error
+        if (blobUrlRef.current) {
+          try {
+            URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = null
+          } catch (e) {
+            console.warn('Error revoking blob URL on play error:', e)
+          }
+        }
         throw playError
       }
     } catch (error) {
       console.error('TTS error:', error)
       setIsLoading(false)
       setIsSpeaking(false)
+      // Clean up on any error
+      if (blobUrlRef.current) {
+        try {
+          URL.revokeObjectURL(blobUrlRef.current)
+          blobUrlRef.current = null
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
     }
   }
 
   const stop = () => {
     if (audioRef.current) {
-      const src = audioRef.current.src
       audioRef.current.pause()
       audioRef.current.currentTime = 0
-      audioRef.current.src = ''
-      // Clean up blob URL
-      if (src && src.startsWith('blob:')) {
-        try {
-          URL.revokeObjectURL(src)
-        } catch (e) {
-          // Ignore errors when revoking
-        }
-      }
+      // Don't set src to '' here - let onended/onerror handle cleanup
       setIsSpeaking(false)
+    }
+    // Clean up blob URL if exists
+    if (blobUrlRef.current) {
+      try {
+        URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = null
+      } catch (e) {
+        console.warn('Error revoking blob URL in stop:', e)
+      }
     }
   }
 
