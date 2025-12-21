@@ -489,7 +489,9 @@ CURRENT DATE AND TIME:
 
 CRITICAL MEMORY INSTRUCTIONS:
 - You MUST remember the user's name if it was mentioned in previous messages or provided in USER INFORMATION above
-- When the user asks "benim adimi hatirliyor musun?" or "do you remember my name?", you MUST answer with their name if you know it
+- When the user asks "benim adim ne?" / "benim adım ne?" / "adım ne?" / "what is my name?" / "benim adimi hatirliyor musun?" / "do you remember my name?", you MUST answer with their name if you know it from USER INFORMATION above
+- If the user's name is in USER INFORMATION, you MUST say their name directly (e.g., "Adınız [NAME]" or "Your name is [NAME]")
+- NEVER say "I don't know your name" or "Üzgünüm, sizin adınızı bilmiyorum" if the name is provided in USER INFORMATION above
 - Always use the user's name naturally in conversations when you know it
 - Remember information shared in previous messages in this conversation
 - Be consistent with information shared in previous messages
