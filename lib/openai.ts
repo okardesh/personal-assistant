@@ -296,7 +296,15 @@ export async function chatWithOpenAI(
   
   if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword))) {
     try {
+      console.log('🏠 [OpenAI] Fetching Home Assistant devices...')
       const devices = await getHomeAssistantDevices(true) // Filter to only controllable devices
+      console.log('🏠 [OpenAI] Found', devices.length, 'controllable devices')
+      
+      if (devices.length === 0) {
+        return {
+          response: 'Şu anda kontrol edebileceğim cihaz bulunmuyor. Home Assistant\'ınızda kontrol edilebilir cihazlar (ışıklar, anahtarlar, termostatlar, vb.) yapılandırılmış olmalı. Home Assistant bağlantınızı ve cihaz yapılandırmanızı kontrol edin.'
+        }
+      }
       
       // Group devices by type
       const devicesByType: Record<string, any[]> = {}
@@ -347,11 +355,22 @@ export async function chatWithOpenAI(
         response += `${stateEmoji} **${device.name}** (${device.state})\n`
       })
       
+      response += `\nBu cihazları kontrol etmek için cihaz adını söyleyebilirsiniz (ör: "lambayı aç", "ışığı kapat", "termostatı ayarla").`
+      
       return { response: response.trim() }
     } catch (error) {
-      console.error('Error fetching device list:', error)
+      console.error('🏠 [OpenAI] Error fetching device list:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+      
+      // Check if it's a configuration error
+      if (errorMessage.includes('not configured') || errorMessage.includes('HOME_ASSISTANT')) {
+        return {
+          response: 'Home Assistant yapılandırılmamış görünüyor. Home Assistant URL ve erişim token\'ınızın doğru yapılandırıldığından emin olun. Eğer Home Assistant kullanmıyorsanız, bu özellik şu anda kullanılamıyor.'
+        }
+      }
+      
       return { 
-        response: `Cihaz listesini alırken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}. Home Assistant bağlantınızı kontrol edin.` 
+        response: `Cihaz listesini alırken bir hata oluştu: ${errorMessage}. Home Assistant bağlantınızı ve yapılandırmanızı kontrol edin.` 
       }
     }
   }
