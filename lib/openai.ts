@@ -273,6 +273,9 @@ export async function chatWithOpenAI(
 
   // Check if user is asking about available devices - handle directly without OpenAI function calling
   const lastUserMessage = messages[messages.length - 1]?.content?.toLowerCase() || ''
+  const previousMessages = messages.slice(-3).map(m => m.content?.toLowerCase() || '').join(' ')
+  const allMessages = (lastUserMessage + ' ' + previousMessages).toLowerCase()
+  
   const deviceListKeywords = [
     'hangi cihazları kontrol edebiliyorsun',
     'hangi cihazları kontrol edebiliyosun',
