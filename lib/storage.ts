@@ -127,6 +127,8 @@ export function extractUserInfoFromMessages(messages: StoredMessage[]): Partial<
     /my name is (.+?)(?:\.|$|,|\s|$)/i,
     /i'm (.+?)(?:\.|$|,|\s|$)/i,
     /i am (.+?)(?:\.|$|,|\s|$)/i,
+    // Also catch variations with "ne" (what) - these are questions, not declarations
+    // But we'll skip these as they're asking, not telling
   ]
   
   for (const message of messages) {
