@@ -363,6 +363,30 @@ export async function chatWithOpenAI(
     })
     const currentDateISO = now.toISOString().split('T')[0] // YYYY-MM-DD format
 
+    // Build user context string for system message
+    let userContextString = ''
+    if (userContext) {
+      if (userContext.name) {
+        userContextString += `\n\nUSER INFORMATION:\n- User's name: ${userContext.name}\n- Always address the user by their name when appropriate. Remember their name and use it naturally in conversations.`
+      }
+      if (userContext.preferences) {
+        const prefs = Object.entries(userContext.preferences)
+          .map(([key, value]) => `- ${key}: ${value}`)
+          .join('\n')
+        if (prefs) {
+          userContextString += `\n- User preferences:\n${prefs}`
+        }
+      }
+      if (userContext.metadata) {
+        const metadata = Object.entries(userContext.metadata)
+          .map(([key, value]) => `- ${key}: ${value}`)
+          .join('\n')
+        if (metadata) {
+          userContextString += `\n- Additional context:\n${metadata}`
+        }
+      }
+    }
+
     // Add system message with context
     const systemMessage: Message = {
       role: 'system',
@@ -406,7 +430,9 @@ When showing Google Search results for events, concerts, or activities:
 CURRENT DATE AND TIME:
 - Today's date: ${currentDate} (${currentDateISO})
 - Current time: ${currentTime}
-- Today is day ${now.getDay()} of the week (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)
+- Today is day ${now.getDay()} of the week (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)${userContextString}
+
+IMPORTANT: Remember previous conversations and user preferences. Use the user's name when you know it. Be consistent with information shared in previous messages.`
 
 CRITICAL: When answering questions about dates and days of the week:
 - ALWAYS calculate the day of the week using the CURRENT DATE as reference
