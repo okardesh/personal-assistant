@@ -43,8 +43,17 @@ export function useOpenAITTS({
       // Create audio element
       const audio = new Audio()
       const blob = await response.blob()
+      
+      // Check if blob is valid
+      if (!blob || blob.size === 0) {
+        throw new Error('Invalid audio blob received')
+      }
+      
       const url = URL.createObjectURL(blob)
       audio.src = url
+
+      // Store URL for cleanup
+      const currentUrl = url
 
       // Handle audio events
       audio.onplay = () => {
@@ -54,18 +63,50 @@ export function useOpenAITTS({
 
       audio.onended = () => {
         setIsSpeaking(false)
-        URL.revokeObjectURL(url)
+        setIsLoading(false)
+        // Clean up blob URL
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl)
+        }
       }
 
       audio.onerror = (error) => {
         console.error('Audio playback error:', error)
         setIsSpeaking(false)
         setIsLoading(false)
-        URL.revokeObjectURL(url)
+        // Clean up blob URL
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl)
+        }
+      }
+
+      // Clean up previous audio if exists
+      if (audioRef.current) {
+        const prevSrc = audioRef.current.src
+        audioRef.current.pause()
+        audioRef.current.src = ''
+        // Revoke previous blob URL if it was a blob URL
+        if (prevSrc && prevSrc.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(prevSrc)
+          } catch (e) {
+            // Ignore errors when revoking
+          }
+        }
       }
 
       audioRef.current = audio
-      await audio.play()
+      
+      // Play audio with error handling
+      try {
+        await audio.play()
+      } catch (playError) {
+        console.error('Error playing audio:', playError)
+        setIsSpeaking(false)
+        setIsLoading(false)
+        URL.revokeObjectURL(currentUrl)
+        throw playError
+      }
     } catch (error) {
       console.error('TTS error:', error)
       setIsLoading(false)
@@ -75,8 +116,18 @@ export function useOpenAITTS({
 
   const stop = () => {
     if (audioRef.current) {
+      const src = audioRef.current.src
       audioRef.current.pause()
       audioRef.current.currentTime = 0
+      audioRef.current.src = ''
+      // Clean up blob URL
+      if (src && src.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(src)
+        } catch (e) {
+          // Ignore errors when revoking
+        }
+      }
       setIsSpeaking(false)
     }
   }
