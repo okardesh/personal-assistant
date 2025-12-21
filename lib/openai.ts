@@ -432,7 +432,13 @@ CURRENT DATE AND TIME:
 - Current time: ${currentTime}
 - Today is day ${now.getDay()} of the week (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)${userContextString}
 
-IMPORTANT: Remember previous conversations and user preferences. Use the user's name when you know it. Be consistent with information shared in previous messages.`
+CRITICAL MEMORY INSTRUCTIONS:
+- You MUST remember the user's name if it was mentioned in previous messages or provided in USER INFORMATION above
+- When the user asks "benim adimi hatirliyor musun?" or "do you remember my name?", you MUST answer with their name if you know it
+- Always use the user's name naturally in conversations when you know it
+- Remember information shared in previous messages in this conversation
+- Be consistent with information shared in previous messages
+- If the user's name is provided in USER INFORMATION above, you MUST use it and remember it throughout the conversation`
 
 CRITICAL: When answering questions about dates and days of the week:
 - ALWAYS calculate the day of the week using the CURRENT DATE as reference
