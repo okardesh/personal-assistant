@@ -297,6 +297,11 @@ export async function chatWithOpenAI(
     'evdeki hangi',
   ]
   
+  // Also check for "try again" or "retry" after device-related context
+  const retryKeywords = ['tekrar dene', 'yine dene', 'tekrar dener misin', 'try again', 'retry']
+  const isRetryAfterDeviceQuery = retryKeywords.some(keyword => lastUserMessage.includes(keyword)) &&
+    (allMessages.includes('cihaz') || allMessages.includes('device') || allMessages.includes('eşya') || allMessages.includes('evdeki'))
+  
   if (deviceListKeywords.some(keyword => lastUserMessage.includes(keyword)) || isRetryAfterDeviceQuery) {
     try {
       console.log('🏠 [OpenAI] Fetching Home Assistant devices...')
