@@ -1,4 +1,5 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<<<<<<< HEAD
   <!-- Outer square with thin white border -->
   <rect x="2" y="2" width="60" height="60" rx="6" stroke="white" stroke-width="2" fill="rgba(0,0,0,0.1)"/>
   
@@ -21,3 +22,54 @@
   <!-- Smile -->
   <path d="M 28 26 Q 32 28, 36 26" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
 </svg>
+=======
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ec4899;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e11d48;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fef3c7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#logoGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- AI/Assistant icon - stylized sparkle/star representing AI intelligence -->
+  <g transform="translate(32, 32)">
+    <!-- Central circle -->
+    <circle cx="0" cy="0" r="8" fill="url(#iconGradient)" opacity="0.9"/>
+    
+    <!-- Sparkle rays -->
+    <g stroke="url(#iconGradient)" stroke-width="2" stroke-linecap="round" opacity="0.9">
+      <!-- Top -->
+      <line x1="0" y1="-12" x2="0" y2="-18"/>
+      <!-- Bottom -->
+      <line x1="0" y1="12" x2="0" y2="18"/>
+      <!-- Left -->
+      <line x1="-12" y1="0" x2="-18" y2="0"/>
+      <!-- Right -->
+      <line x1="12" y1="0" x2="18" y2="0"/>
+      <!-- Top-right -->
+      <line x1="8.5" y1="-8.5" x2="12.7" y2="-12.7"/>
+      <!-- Top-left -->
+      <line x1="-8.5" y1="-8.5" x2="-12.7" y2="-12.7"/>
+      <!-- Bottom-right -->
+      <line x1="8.5" y1="8.5" x2="12.7" y2="12.7"/>
+      <!-- Bottom-left -->
+      <line x1="-8.5" y1="8.5" x2="-12.7" y2="12.7"/>
+    </g>
+    
+    <!-- Small dots around center -->
+    <circle cx="0" cy="-14" r="1.5" fill="url(#iconGradient)"/>
+    <circle cx="0" cy="14" r="1.5" fill="url(#iconGradient)"/>
+    <circle cx="-14" cy="0" r="1.5" fill="url(#iconGradient)"/>
+    <circle cx="14" cy="0" r="1.5" fill="url(#iconGradient)"/>
+  </g>
+</svg>
+
+>>>>>>> 6c4f89c (Redesign UI with logo and high-contrast colors)
