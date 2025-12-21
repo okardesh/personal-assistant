@@ -217,17 +217,12 @@ export default function Home() {
           <div className="flex items-center justify-center gap-4 mb-4">
             <img 
               src="/logo.svg" 
-              alt="Personal Assistant Logo" 
+              alt="Wise Assistant Logo" 
               className="w-16 h-16 animate-in fade-in slide-in-from-top-4"
               style={{ animationDelay: '0.2s' }}
             />
-<<<<<<< HEAD
-            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-orange-600 via-pink-600 to-rose-600 bg-clip-text text-transparent dark:from-orange-400 dark:via-pink-400 dark:to-rose-400">
-              Wise Assistant
-=======
             <h1 className="text-5xl font-extrabold bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-rose-400 drop-shadow-lg">
-              Personal Assistant
->>>>>>> 6c4f89c (Redesign UI with logo and high-contrast colors)
+              Wise Assistant
             </h1>
           </div>
           <p className="text-slate-700 dark:text-slate-300 text-lg font-medium">
