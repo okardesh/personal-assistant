@@ -68,7 +68,7 @@ const functions = [
   },
   {
     name: 'get_emails',
-    description: 'Get emails from the user\'s inbox. Use this when the user asks about their emails, inbox, or mail.',
+    description: 'Get emails from the user\'s inbox. Use this when the user asks about their emails, inbox, or mail. IMPORTANT: This function only LISTS emails (subject, sender, date) - it does NOT read content or summarize unless the user explicitly asks to read (e.g., "okur musun", "oku", "read", "özetle"). Emails remain unread until the user explicitly asks to mark them as read.',
     parameters: {
       type: 'object',
       properties: {
@@ -81,6 +81,20 @@ const functions = [
           description: 'Maximum number of emails to return',
         },
       },
+    },
+  },
+  {
+    name: 'mark_email_as_read',
+    description: 'Mark an email as read. Use this ONLY when the user explicitly asks to mark an email as read, open an email, or says "oku" (read). Do NOT use this automatically when fetching or summarizing emails. The user must explicitly request it.',
+    parameters: {
+      type: 'object',
+      properties: {
+        emailId: {
+          type: 'string',
+          description: 'The ID of the email to mark as read (from the email object returned by get_emails)',
+        },
+      },
+      required: ['emailId'],
     },
   },
   {
@@ -448,7 +462,7 @@ export async function chatWithOpenAI(
       content: `You are a helpful personal assistant. You can help users with:
 - Calendar: Check their PERSONAL calendar events (ONLY when they explicitly mention "takvimim", "randevularım", "toplantılarım", "my calendar", "my appointments")
 - Calendar: Add events to their calendar when they ask (e.g., "bunu takvimime ekle", "add to calendar", "takvime ekle")
-- Email: Check their inbox and unread emails, summarize emails when asked
+- Email: Check their inbox and list emails (subject, sender, date). DO NOT read or summarize emails unless the user explicitly asks "okur musun", "oku", "read", "özetle", or "summarize"
 - Weather: Get current weather information for their location or any city
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
@@ -521,7 +535,14 @@ When adding events to calendar:
 
     When the user asks about their calendar, emails, or weather, use the appropriate function. For weather queries, use the user's location coordinates if available, otherwise ask for a city name or use the get_weather function with coordinates.
 
-    When the user asks about emails or to summarize an email:
+    CRITICAL EMAIL RULES:
+    - DO NOT read, summarize, or show email content unless the user explicitly asks with words like: "okur musun", "oku", "read", "özetle", "summarize", "içeriğini göster", "show content"
+    - When user asks about emails WITHOUT explicitly asking to read them (e.g., "email'lerim", "inbox", "unread emails"), ONLY list email subjects, senders, and dates
+    - Example response for listing: "5 okunmamış email'iniz var:\n1. Amazon'dan - Paketiniz teslim edildi\n2. LinkedIn'den - Yeni davetiyeler\n..."
+    - DO NOT include email content, body, or summary in the response unless user explicitly asks to read
+    - If user asks "email'lerim" or "inbox", just list them - DO NOT read them
+    
+    When the user EXPLICITLY asks to read or summarize an email (e.g., "okur musun", "oku", "özetle"):
     - CRITICAL RULE: You MUST NEVER say "E-posta içeriği hakkında daha fazla bilgiye ulaşamıyorum" or "daha fazla bilgiye ulaşamıyorum" or any variation of this phrase
     - CRITICAL RULE: You MUST NEVER say you cannot access email content - you ALWAYS have access to the snippet field
     - The email data will be provided in the "emails" array with a "snippet" field
@@ -549,11 +570,10 @@ When adding events to calendar:
     - If you see ANY formatting, headers, links, or multiple sentences in your response, DELETE IT IMMEDIATELY and replace with a single sentence summary
 
     Email fetching logic:
-    - When user asks about emails, first check for unread emails (up to 5)
-    - If no unread emails exist, fetch and summarize the latest email
+    - When user asks about emails WITHOUT asking to read them: Just list subjects, senders, dates - DO NOT read or summarize
+    - When user asks about emails WITH explicit read request (e.g., "okur musun", "oku", "özetle"): Then read and summarize
+    - If no unread emails exist and user asks to read, fetch and summarize the latest email
     - If the email data has _metadata.noUnreadEmails = true, it means there are no unread emails
-    - In that case, always inform the user: "Hiç okunmamış email yok" and then summarize the latest email
-    - Show unread emails if available, otherwise show the latest email with a note that there are no unread emails
 
 When displaying calendar events, format them nicely:
 - IMPORTANT: Show events from BOTH Apple Calendar (iCloud) AND Outlook Calendar (work calendar)

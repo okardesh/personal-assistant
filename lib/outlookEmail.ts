@@ -140,3 +140,40 @@ export async function fetchOutlookEmails(options: { unread?: boolean; limit?: nu
   }
 }
 
+export async function markOutlookEmailAsRead(emailId: string): Promise<{ success: boolean; error?: string }> {
+  console.log('📧 [Outlook Email] Marking email as read:', emailId)
+  const accessToken = await getMicrosoftAccessToken()
+
+  if (!accessToken) {
+    return { success: false, error: 'Outlook authentication failed. Please authenticate first.' }
+  }
+
+  try {
+    // Microsoft Graph API endpoint for marking email as read
+    const graphUrl = `https://graph.microsoft.com/v1.0/me/messages/${emailId}`
+    
+    const response = await fetch(graphUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        isRead: true
+      }),
+    })
+
+    if (response.ok) {
+      console.log('✅ [Outlook Email] Email marked as read successfully')
+      return { success: true }
+    } else {
+      const errorText = await response.text()
+      console.error('❌ [Outlook Email] Failed to mark email as read:', response.status, response.statusText, errorText)
+      return { success: false, error: `Failed to mark email as read: ${response.status} ${response.statusText}` }
+    }
+  } catch (error) {
+    console.error('❌ [Outlook Email] Error marking email as read:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
