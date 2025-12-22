@@ -134,17 +134,31 @@ export async function fetchOutlookCalendarEvents(
     const events: CalendarEvent[] = []
 
     for (const item of data.value || []) {
-      // Microsoft Graph API returns dateTime in ISO 8601 format with timezone
-      // The dateTime string includes timezone info (e.g., "2025-12-22T08:00:00.0000000" or "2025-12-22T08:00:00Z")
-      // Parse it directly - Date constructor handles timezone conversion automatically
-      const startDateTime = new Date(item.start.dateTime)
-      const endDateTime = item.end?.dateTime ? new Date(item.end.dateTime) : undefined
+      // Microsoft Graph API returns dateTime in ISO 8601 format
+      // The dateTime might be in UTC (ending with Z) or without timezone info
+      // We need to ensure it's treated as UTC and converted to local time
+      let startDateTimeStr = item.start.dateTime
+      let endDateTimeStr = item.end?.dateTime
+      
+      // If dateTime doesn't end with Z or timezone offset, it's likely UTC
+      // Add Z to ensure it's parsed as UTC
+      if (!startDateTimeStr.endsWith('Z') && !startDateTimeStr.match(/[+-]\d{2}:\d{2}$/)) {
+        // Remove any fractional seconds and add Z for UTC
+        startDateTimeStr = startDateTimeStr.split('.')[0] + 'Z'
+      }
+      if (endDateTimeStr && !endDateTimeStr.endsWith('Z') && !endDateTimeStr.match(/[+-]\d{2}:\d{2}$/)) {
+        endDateTimeStr = endDateTimeStr.split('.')[0] + 'Z'
+      }
+      
+      // Parse as UTC and convert to local time
+      const startDateTime = new Date(startDateTimeStr)
+      const endDateTime = endDateTimeStr ? new Date(endDateTimeStr) : undefined
       
       // Get the timezone from the event if available (for logging/debugging)
       const eventTimeZone = item.start.timeZone || 'UTC'
       
       // Convert to local time for display
-      // Date object is already in local timezone after parsing, so we can use it directly
+      // getFullYear(), getMonth(), etc. automatically return local time values
       const year = startDateTime.getFullYear()
       const month = String(startDateTime.getMonth() + 1).padStart(2, '0')
       const day = String(startDateTime.getDate()).padStart(2, '0')
@@ -154,7 +168,7 @@ export async function fetchOutlookCalendarEvents(
       const minutes = String(startDateTime.getMinutes()).padStart(2, '0')
       const timeStr = `${hours}:${minutes}`
       
-      console.log(`📧 [Outlook] Event "${item.subject}": original="${item.start.dateTime}", timezone="${eventTimeZone}", parsed="${startDateTime.toISOString()}", local="${dateStr} ${timeStr}"`)
+      console.log(`📧 [Outlook] Event "${item.subject}": original="${item.start.dateTime}", normalized="${startDateTimeStr}", timezone="${eventTimeZone}", UTC="${startDateTime.toISOString()}", local="${dateStr} ${timeStr}"`)
 
       events.push({
         title: item.subject || 'Untitled Event',
