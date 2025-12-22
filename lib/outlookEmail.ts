@@ -6,6 +6,7 @@ interface Email {
   from: string
   date: string
   snippet?: string
+  unread?: boolean
 }
 
 async function getMicrosoftAccessToken(): Promise<string | null> {
@@ -78,8 +79,8 @@ export async function fetchOutlookEmails(options: { unread?: boolean; limit?: nu
     // Order by received date (newest first)
     graphUrl += '&$orderby=receivedDateTime desc'
     
-    // Select only needed fields
-    graphUrl += '&$select=id,subject,from,receivedDateTime,bodyPreview,body'
+    // Select only needed fields (include isRead for unread status)
+    graphUrl += '&$select=id,subject,from,receivedDateTime,bodyPreview,body,isRead'
 
     console.log('📧 [Outlook Email] Fetching from Graph API:', graphUrl)
 
@@ -124,6 +125,7 @@ export async function fetchOutlookEmails(options: { unread?: boolean; limit?: nu
         from: from,
         date: receivedDate.toISOString(),
         snippet: snippet.substring(0, 1000), // Limit snippet length
+        unread: !item.isRead, // Outlook uses isRead (true = read, false = unread)
       })
     }
 

@@ -754,7 +754,7 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                 unreadDetails: allEmails.map(e => ({ subject: e.subject, unread: e.unread, source: e.id?.startsWith('icloud-') ? 'iCloud' : 'Outlook' }))
               })
               
-              // Filter for unread emails (iCloud emails have unread property, Outlook emails don't have it in the same way)
+              // Filter for unread emails (both iCloud and Outlook emails have unread property)
               const unreadEmails = allEmails.filter(e => e.unread === true).slice(0, 5)
               console.log('📧 [OpenAI] Unread emails check', { 
                 total: allEmails.length, 
