@@ -134,15 +134,34 @@ export async function fetchOutlookCalendarEvents(
     const events: CalendarEvent[] = []
 
     for (const item of data.value || []) {
+      // Microsoft Graph API returns dateTime in ISO 8601 format with timezone
+      // The dateTime string includes timezone info (e.g., "2025-12-22T08:00:00.0000000" or "2025-12-22T08:00:00Z")
+      // Parse it directly - Date constructor handles timezone conversion automatically
       const startDateTime = new Date(item.start.dateTime)
-      const endDateTime = item.end ? new Date(item.end.dateTime) : undefined
+      const endDateTime = item.end?.dateTime ? new Date(item.end.dateTime) : undefined
+      
+      // Get the timezone from the event if available (for logging/debugging)
+      const eventTimeZone = item.start.timeZone || 'UTC'
+      
+      // Convert to local time for display
+      // Date object is already in local timezone after parsing, so we can use it directly
+      const year = startDateTime.getFullYear()
+      const month = String(startDateTime.getMonth() + 1).padStart(2, '0')
+      const day = String(startDateTime.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      const hours = String(startDateTime.getHours()).padStart(2, '0')
+      const minutes = String(startDateTime.getMinutes()).padStart(2, '0')
+      const timeStr = `${hours}:${minutes}`
+      
+      console.log(`📧 [Outlook] Event "${item.subject}": original="${item.start.dateTime}", timezone="${eventTimeZone}", parsed="${startDateTime.toISOString()}", local="${dateStr} ${timeStr}"`)
 
       events.push({
         title: item.subject || 'Untitled Event',
-        date: startDateTime.toISOString().split('T')[0],
-        time: startDateTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        date: dateStr,
+        time: timeStr,
         calendar: 'work',
-        start: startDateTime,
+        start: startDateTime, // Keep original Date object for filtering
         end: endDateTime,
         description: item.bodyPreview,
         location: item.location?.displayName,
