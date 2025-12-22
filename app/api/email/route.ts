@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchICloudEmails } from '@/lib/icloudEmail'
+import { fetchOutlookEmails } from '@/lib/outlookEmail'
 
 interface Email {
   id: string
@@ -12,15 +13,42 @@ interface Email {
 async function fetchEmails(options: { unread?: boolean; limit?: number }): Promise<Email[]> {
   console.log('📧 [API] fetchEmails called', { options })
   
+  let iCloudEmails: Email[] = []
+  let outlookEmails: Email[] = []
+  
+  // Fetch from both sources
   try {
     console.log('📧 [API] Calling fetchICloudEmails')
-    const emails = await fetchICloudEmails(options)
-    console.log('📧 [API] fetchICloudEmails result', { count: emails.length })
-    return emails
+    iCloudEmails = await fetchICloudEmails(options)
+    console.log('📧 [API] fetchICloudEmails result', { count: iCloudEmails.length })
   } catch (error) {
-    console.error('📧 [API] Error fetching emails', { error: error instanceof Error ? error.message : 'Unknown', stack: error instanceof Error ? error.stack : undefined })
-    return []
+    console.error('📧 [API] Error fetching iCloud emails', { error: error instanceof Error ? error.message : 'Unknown', stack: error instanceof Error ? error.stack : undefined })
   }
+  
+  try {
+    console.log('📧 [API] Calling fetchOutlookEmails')
+    outlookEmails = await fetchOutlookEmails(options)
+    console.log('📧 [API] fetchOutlookEmails result', { count: outlookEmails.length })
+  } catch (error) {
+    console.error('📧 [API] Error fetching Outlook emails', { error: error instanceof Error ? error.message : 'Unknown', stack: error instanceof Error ? error.stack : undefined })
+  }
+  
+  // Combine and sort by date (newest first)
+  const allEmails = [...iCloudEmails, ...outlookEmails].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime()
+  })
+  
+  // Apply limit after combining
+  const limitedEmails = allEmails.slice(0, options.limit || 10)
+  
+  console.log('📧 [API] Combined emails:', { 
+    iCloud: iCloudEmails.length, 
+    outlook: outlookEmails.length, 
+    total: allEmails.length,
+    limited: limitedEmails.length 
+  })
+  
+  return limitedEmails
 }
 
 export async function GET(request: NextRequest) {
