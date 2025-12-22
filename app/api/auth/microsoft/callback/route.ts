@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       code,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
-      scope: 'https://graph.microsoft.com/Calendars.Read offline_access',
+      scope: 'https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Mail.Read offline_access',
     })
 
     const response = await fetch(tokenUrl, {

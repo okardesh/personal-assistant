@@ -50,6 +50,13 @@ export async function GET(request: NextRequest) {
     })
 
     console.log('✅ Total events:', allEvents.length)
+    console.log('📊 Event breakdown:', {
+      apple: appleEvents.length,
+      outlook: outlookEvents.length,
+      total: allEvents.length,
+      appleTitles: appleEvents.map(e => e.title),
+      outlookTitles: outlookEvents.map(e => e.title),
+    })
     return NextResponse.json({ events: allEvents })
   } catch (error) {
     console.error('❌ Calendar API error:', error)

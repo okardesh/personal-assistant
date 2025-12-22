@@ -657,10 +657,22 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
               fetchAppleCalendarEvents(period),
               fetchOutlookCalendarEvents(period).catch(() => []),
             ])
+            console.log('📊 Server-side event breakdown:', {
+              apple: appleEvents.length,
+              outlook: outlookEvents.length,
+              appleTitles: appleEvents.map(e => e.title),
+              outlookTitles: outlookEvents.map(e => e.title),
+            })
             events = [...appleEvents, ...outlookEvents]
           } else {
             // Client-side: use API route
+            console.log('🌐 Client-side: Fetching calendar events from API...')
             events = await getCalendarEvents(period)
+            console.log('📊 Client-side events received:', {
+              count: events.length,
+              titles: events.map(e => e.title),
+              calendars: events.map(e => e.calendar),
+            })
           }
           
           // Sort events by time
