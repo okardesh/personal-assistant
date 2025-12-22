@@ -50,7 +50,12 @@ async function getMicrosoftAccessToken(): Promise<string | null> {
 
       if (response.ok) {
         const data: MicrosoftTokenResponse = await response.json()
+        console.log('✅ Outlook token refreshed successfully')
         return data.access_token
+      } else {
+        const errorText = await response.text()
+        console.error('❌ Outlook token refresh failed:', response.status, response.statusText, errorText)
+        return null
       }
     }
 
@@ -67,11 +72,15 @@ async function getMicrosoftAccessToken(): Promise<string | null> {
 export async function fetchOutlookCalendarEvents(
   period: 'today' | 'tomorrow' | 'week'
 ): Promise<CalendarEvent[]> {
+  console.log('📧 [Outlook] Starting to fetch calendar events for period:', period)
   const accessToken = await getMicrosoftAccessToken()
 
   if (!accessToken) {
+    console.warn('⚠️ [Outlook] No access token available, returning empty array')
     return []
   }
+  
+  console.log('✅ [Outlook] Access token obtained, fetching events...')
 
   try {
     // Calculate date range
@@ -111,15 +120,17 @@ export async function fetchOutlookCalendarEvents(
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
       if (response.status === 401) {
-        console.error('Outlook authentication failed. Token may be expired.')
+        console.error('❌ [Outlook] Authentication failed. Token may be expired. Status:', response.status, 'Error:', errorText)
       } else {
-        console.error('Microsoft Graph API request failed:', response.status, response.statusText)
+        console.error('❌ [Outlook] Microsoft Graph API request failed. Status:', response.status, response.statusText, 'Error:', errorText)
       }
       return []
     }
 
     const data = await response.json()
+    console.log('📧 [Outlook] Graph API response received, events count:', data.value?.length || 0)
     const events: CalendarEvent[] = []
 
     for (const item of data.value || []) {
@@ -138,8 +149,9 @@ export async function fetchOutlookCalendarEvents(
       })
     }
 
+    console.log('📧 [Outlook] Parsed events before filtering:', events.length, 'events')
     // Filter events by period
-    return events.filter(event => {
+    const filteredEvents = events.filter(event => {
       const eventDate = event.start
       if (period === 'today') {
         return eventDate.toDateString() === now.toDateString()
@@ -152,8 +164,16 @@ export async function fetchOutlookCalendarEvents(
         return eventDate >= startDate && eventDate < endDate
       }
     })
+    
+    console.log('📧 [Outlook] Filtered events for period', period, ':', filteredEvents.length, 'events')
+    console.log('📧 [Outlook] Event titles:', filteredEvents.map(e => e.title))
+    return filteredEvents
   } catch (error) {
-    console.error('Error fetching Outlook Calendar events:', error)
+    console.error('❌ [Outlook] Error fetching Outlook Calendar events:', error)
+    if (error instanceof Error) {
+      console.error('❌ [Outlook] Error message:', error.message)
+      console.error('❌ [Outlook] Error stack:', error.stack)
+    }
     return []
   }
 }
