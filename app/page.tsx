@@ -107,46 +107,34 @@ export default function Home() {
 
     let location = null
     if (needsLocation) {
-      // Check if permission was previously denied
-      const permissionDenied = typeof window !== 'undefined' && 
-        localStorage.getItem('location-permission-denied') === 'true'
-      
-      if (!permissionDenied) {
-        // Try to get location - this will prompt the user for permission if needed
-        // If permission was previously granted, it will use cached location
-        try {
-          console.log('📍 Requesting location...')
-          // Check if we have a valid cached location
-          const hasCache = typeof window !== 'undefined' && 
-            localStorage.getItem('personal-assistant-location') !== null
-          
-          // For directions queries, always try to get fresh location if no cache
-          // This ensures the permission prompt appears if needed
-          const forceRefresh = !hasCache
-          console.log('📍 Force refresh:', forceRefresh, 'Has cache:', hasCache)
-          
-          location = await getClientLocation(forceRefresh)
-          if (location) {
-            console.log('✅ Location obtained:', location.latitude, location.longitude)
-          } else {
-            console.log('⚠️ Location not available - permission may be needed')
-            // If location is null, it might be because permission wasn't granted
-            // Clear the denied flag to allow retry
-            if (typeof window !== 'undefined') {
-              const denied = localStorage.getItem('location-permission-denied')
-              console.log('📍 Permission denied flag:', denied)
-            }
-          }
-        } catch (error) {
-          console.error('❌ Location error:', error)
-          // Continue without location - OpenAI will handle it
-        }
-      } else {
-        console.log('📍 Location permission was previously denied - clearing flag to allow retry')
-        // Clear the denied flag to allow user to try again
+      // Always try to get location for directions/route queries
+      // This will prompt the user for permission if needed
+      try {
+        console.log('📍 Requesting location for directions query...')
+        // Check if we have a valid cached location
+        const hasCache = typeof window !== 'undefined' && 
+          localStorage.getItem('personal-assistant-location') !== null
+        
+        // For directions queries, always try to get fresh location
+        // Clear permission denied flag to allow retry
         if (typeof window !== 'undefined') {
           localStorage.removeItem('location-permission-denied')
+          console.log('📍 Cleared permission denied flag to allow retry')
         }
+        
+        // Force refresh to ensure permission prompt appears
+        const forceRefresh = true
+        console.log('📍 Force refresh:', forceRefresh, 'Has cache:', hasCache)
+        
+        location = await getClientLocation(forceRefresh)
+        if (location) {
+          console.log('✅ Location obtained:', location.latitude, location.longitude)
+        } else {
+          console.log('⚠️ Location not available - permission may be needed or denied')
+        }
+      } catch (error) {
+        console.error('❌ Location error:', error)
+        // Continue without location - OpenAI will handle it
       }
     }
 

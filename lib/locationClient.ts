@@ -19,6 +19,12 @@ export async function getClientLocation(forceRefresh = false): Promise<Location 
     return null
   }
 
+  // If force refresh, clear permission denied flag to allow retry
+  if (forceRefresh) {
+    localStorage.removeItem('location-permission-denied')
+    console.log('📍 Force refresh: cleared permission denied flag to allow retry')
+  }
+
   // Check cache first (unless force refresh)
   if (!forceRefresh) {
     const cached = localStorage.getItem(LOCATION_CACHE_KEY)
