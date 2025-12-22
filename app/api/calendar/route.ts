@@ -35,10 +35,23 @@ export async function GET(request: NextRequest) {
 
     try {
       console.log('📧 Fetching Outlook Calendar events...')
-      outlookEvents = await fetchOutlookCalendarEvents(period).catch(() => [])
+      console.log('📧 Outlook config check:', {
+        hasClientId: !!process.env.OUTLOOK_CLIENT_ID,
+        hasClientSecret: !!process.env.OUTLOOK_CLIENT_SECRET,
+        hasTenantId: !!process.env.OUTLOOK_TENANT_ID,
+        hasRefreshToken: !!process.env.OUTLOOK_REFRESH_TOKEN,
+        tenantId: process.env.OUTLOOK_TENANT_ID,
+      })
+      outlookEvents = await fetchOutlookCalendarEvents(period).catch((err) => {
+        console.error('❌ Outlook Calendar fetch error:', err)
+        return []
+      })
       console.log('📧 Outlook Calendar events fetched:', outlookEvents.length)
     } catch (error) {
       console.error('❌ Outlook Calendar error:', error)
+      if (error instanceof Error) {
+        console.error('❌ Outlook Calendar error details:', error.message, error.stack)
+      }
       // Silently fail for Outlook
     }
 
