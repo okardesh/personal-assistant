@@ -15,6 +15,7 @@ import {
   controlMediaPlayer,
 } from './homeAssistant'
 import { fetchICloudEmails } from './icloudEmail'
+import { fetchOutlookEmails } from './outlookEmail'
 import { getWeather, getWeatherByCity } from './weather'
 import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar'
 import { fetchOutlookCalendarEvents, addOutlookCalendarEvent } from './outlookCalendar'
@@ -721,20 +722,39 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
           let hasUnread = false
           
           if (typeof window === 'undefined') {
-            console.log('📧 [OpenAI] Server-side: Fetching emails directly')
+            console.log('📧 [OpenAI] Server-side: Fetching emails directly from both sources')
             try {
-              // First, get all emails (up to 10) to check for unread ones
-              const allEmails = await fetchICloudEmails({
-                unread: false,
-                limit: 10, // Get more to find unread ones
+              // Fetch from both iCloud and Outlook
+              const [iCloudEmails, outlookEmails] = await Promise.all([
+                fetchICloudEmails({
+                  unread: false,
+                  limit: 10,
+                }).catch(err => {
+                  console.error('📧 [OpenAI] Error fetching iCloud emails:', err)
+                  return []
+                }),
+                fetchOutlookEmails({
+                  unread: false,
+                  limit: 10,
+                }).catch(err => {
+                  console.error('📧 [OpenAI] Error fetching Outlook emails:', err)
+                  return []
+                }),
+              ])
+              
+              // Combine and sort by date (newest first)
+              const allEmails = [...iCloudEmails, ...outlookEmails].sort((a, b) => {
+                return new Date(b.date).getTime() - new Date(a.date).getTime()
               })
               
               console.log('📧 [OpenAI] All emails fetched', { 
+                iCloud: iCloudEmails.length,
+                outlook: outlookEmails.length,
                 total: allEmails.length,
-                unreadDetails: allEmails.map(e => ({ subject: e.subject, unread: e.unread }))
+                unreadDetails: allEmails.map(e => ({ subject: e.subject, unread: e.unread, source: e.id?.startsWith('icloud-') ? 'iCloud' : 'Outlook' }))
               })
               
-              // Filter for unread emails
+              // Filter for unread emails (iCloud emails have unread property, Outlook emails don't have it in the same way)
               const unreadEmails = allEmails.filter(e => e.unread === true).slice(0, 5)
               console.log('📧 [OpenAI] Unread emails check', { 
                 total: allEmails.length, 
@@ -752,15 +772,11 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                   emails = [allEmails[0]] // Already sorted newest first
                   console.log('📧 [OpenAI] Latest email selected', { 
                     subject: emails[0].subject,
-                    date: emails[0].date 
+                    date: emails[0].date,
+                    source: emails[0].id?.startsWith('icloud-') ? 'iCloud' : 'Outlook'
                   })
                 } else {
-                  // Fallback: fetch just one
-                  console.log('📧 [OpenAI] No emails found, fetching one more')
-                  emails = await fetchICloudEmails({
-                    unread: false,
-                    limit: 1,
-                  })
+                  emails = []
                 }
                 hasUnread = false
                 console.log('📧 [OpenAI] Final email list', { 
@@ -768,6 +784,7 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                   hasUnread,
                   emails: emails.map(e => ({
                     subject: e.subject,
+                    source: e.id?.startsWith('icloud-') ? 'iCloud' : 'Outlook',
                     snippetLength: e.snippet?.length || 0,
                     hasSnippet: !!e.snippet,
                     snippetPreview: e.snippet?.substring(0, 200) || 'NO SNIPPET'
@@ -809,21 +826,24 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
             emails[0]._metadata = { noUnreadEmails: true }
           }
           
-          // ALWAYS try to fetch email body if we have emails, especially for latest email
-          // This ensures we have content for summarization
+          // ONLY fetch email body if user explicitly asks to read/summarize
+          // DO NOT automatically read emails - user must explicitly request it
           const userMessage = messages[messages.length - 1]?.content || ''
           const allMessages = messages.map(m => m.content || '').join(' ').toLowerCase()
           const needsSummary = userMessage.toLowerCase().includes('özetle') || 
                               userMessage.toLowerCase().includes('summarize') ||
                               userMessage.toLowerCase().includes('özet') ||
-                              userMessage.toLowerCase().includes('en son') ||
-                              userMessage.toLowerCase().includes('latest') ||
-                              userMessage.toLowerCase().includes('son email') ||
+                              userMessage.toLowerCase().includes('oku') ||
+                              userMessage.toLowerCase().includes('okur musun') ||
+                              userMessage.toLowerCase().includes('read') ||
+                              userMessage.toLowerCase().includes('içeriğini göster') ||
+                              userMessage.toLowerCase().includes('show content') ||
                               allMessages.includes('özetle') ||
                               allMessages.includes('summarize') ||
                               allMessages.includes('özet') ||
-                              // If no unread emails and we're showing latest, always try to get body for summary
-                              (!hasUnread && emails.length > 0)
+                              allMessages.includes('oku') ||
+                              allMessages.includes('okur musun') ||
+                              allMessages.includes('read')
           
           console.log('📧 [OpenAI] Summary check', { 
             needsSummary, 
@@ -840,21 +860,24 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
             }
           })
           
-          // ALWAYS fetch email body if we have emails (especially for latest email or if summary requested)
-          if (emails.length > 0) {
+          // ONLY fetch email body if user explicitly asked to read/summarize
+          // DO NOT automatically fetch body - user must explicitly request it
+          // CRITICAL: Only fetch body if user explicitly said "oku", "okur musun", "özetle", "read", "summarize"
+          if (emails.length > 0 && needsSummary) {
             const latestEmail = emails[0]
-            const shouldFetchBody = needsSummary || (!hasUnread && emails.length === 1)
             
             console.log('📧 [OpenAI] Email body fetch decision', { 
-              shouldFetchBody,
               needsSummary,
               hasUnread,
               emailCount: emails.length,
               emailId: latestEmail.id,
-              hasSnippet: !!latestEmail.snippet
+              hasSnippet: !!latestEmail.snippet,
+              userExplicitlyAsked: needsSummary
             })
             
-            if (shouldFetchBody && latestEmail.id && !latestEmail.snippet) {
+            // Only fetch body if user explicitly asked AND email doesn't have snippet yet
+            // Outlook emails already have snippet from API, iCloud emails might need body fetch
+            if (needsSummary && latestEmail.id && !latestEmail.snippet) {
               console.log('📧 [OpenAI] ✅ Fetching email body', { 
                 emailId: latestEmail.id, 
                 subject: latestEmail.subject,
