@@ -495,7 +495,7 @@ CRITICAL MEMORY INSTRUCTIONS:
 - Always use the user's name naturally in conversations when you know it
 - Remember information shared in previous messages in this conversation
 - Be consistent with information shared in previous messages
-- If the user's name is provided in USER INFORMATION above, you MUST use it and remember it throughout the conversation`
+- If the user's name is provided in USER INFORMATION above, you MUST use it and remember it throughout the conversation
 
 CRITICAL: When answering questions about dates and days of the week:
 - ALWAYS calculate the day of the week using the CURRENT DATE as reference
