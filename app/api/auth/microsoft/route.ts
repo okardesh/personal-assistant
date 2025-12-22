@@ -12,17 +12,16 @@ export async function GET(request: NextRequest) {
     )
   }
   
-  // Try with user.read scope first, then add calendar permissions
+  // Try with user.read scope first, then add calendar and mail permissions
   // This sometimes works better for unverified apps
-  const scope = 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.Read offline_access'
+  const scope = 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Mail.Read offline_access'
   
   const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
     `client_id=${clientId}&` +
     `response_type=code&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `response_mode=query&` +
-    `scope=${encodeURIComponent(scope)}&` +
-    `prompt=consent`
+    `scope=${encodeURIComponent(scope)}`
 
   return NextResponse.redirect(authUrl)
 }

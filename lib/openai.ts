@@ -53,7 +53,7 @@ interface Message {
 const functions = [
   {
     name: 'get_calendar_events',
-    description: 'Get calendar events from the user\'s PERSONAL calendar (Apple Calendar or Outlook). Use this when the user asks about their calendar, appointments, meetings, schedule, or "what\'s next" (e.g., "takvimim", "randevularım", "toplantılarım", "sırada ne var", "sonraki etkinlik", "bugun takvimde sirada ne var", "my calendar", "my appointments", "what\'s next", "next event"). IMPORTANT: When user asks "sırada ne var" or "what\'s next", you MUST get today\'s events and filter to show only the next event after current time. Do NOT use this for general questions about events, sports matches, concerts, or public events - use Google search instead.',
+    description: 'Get calendar events from BOTH the user\'s Apple Calendar (iCloud) AND Outlook Calendar (work calendar). This function returns events from BOTH calendars combined. Use this when the user asks about their calendar, appointments, meetings, schedule, or "what\'s next" (e.g., "takvimim", "randevularım", "toplantılarım", "sırada ne var", "sonraki etkinlik", "bugun takvimde sirada ne var", "my calendar", "my appointments", "what\'s next", "next event"). CRITICAL: The response includes events from BOTH calendars - you MUST show ALL events from both Apple Calendar and Outlook Calendar. Do NOT filter or exclude any events. IMPORTANT: When user asks "sırada ne var" or "what\'s next", you MUST get today\'s events and filter to show only the next event after current time. Do NOT use this for general questions about events, sports matches, concerts, or public events - use Google search instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -556,11 +556,14 @@ When adding events to calendar:
     - Show unread emails if available, otherwise show the latest email with a note that there are no unread emails
 
 When displaying calendar events, format them nicely:
-- Sort events by time
+- IMPORTANT: Show events from BOTH Apple Calendar (iCloud) AND Outlook Calendar (work calendar)
+- The get_calendar_events function returns events from both calendars combined
+- Sort events by time (all calendars together)
 - Show time in a readable format (e.g., "14:30" or "2:30 PM")
 - Include location if available: "⏰ 14:30 - Toplantı 📍 İstanbul"
 - For today: "📅 Bugünkü Etkinlikleriniz:\n\n⏰ 14:30 - Toplantı 📍 İstanbul\n⏰ 16:00 - Randevu"
 - For tomorrow: "📅 Yarınki Etkinlikleriniz:\n\n⏰ 10:00 - Toplantı 📍 İstanbul\n⏰ 14:00 - Randevu"
+- DO NOT filter or exclude any calendar - show ALL events from both calendars
 
 CRITICAL: When user asks "sırada ne var", "sonraki etkinlik", "what's next", "next event", "bugun takvimde sirada ne var", or similar questions about what's coming up:
 - ALWAYS check the CURRENT TIME first (provided above in CURRENT DATE AND TIME section)

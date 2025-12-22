@@ -37,7 +37,7 @@ async function getMicrosoftAccessToken(): Promise<string | null> {
         client_secret: clientSecret,
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        scope: 'https://graph.microsoft.com/Calendars.ReadWrite offline_access',
+        scope: 'https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Mail.Read offline_access',
       })
 
       const response = await fetch(tokenUrl, {
