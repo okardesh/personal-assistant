@@ -962,16 +962,16 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
               hasUnread
             })
             
-            // Even if not fetching body, ensure snippet exists for latest email
-            if (emails.length > 0 && !hasUnread) {
-              const latestEmail = emails[0]
-              if (!latestEmail.snippet) {
-                latestEmail.snippet = `Email information:
-Subject: ${latestEmail.subject}
-From: ${latestEmail.from}
-Date: ${latestEmail.date}
-Note: Email body not retrieved, but provide information based on available details.`
-              }
+            // DO NOT create snippet automatically - user must explicitly ask to read
+            // Remove snippets from emails if user didn't explicitly ask to read them
+            // This prevents OpenAI from automatically summarizing emails
+            if (emails.length > 0 && !needsSummary) {
+              console.log('📧 [OpenAI] User did not ask to read emails - removing snippets to prevent auto-summary')
+              emails.forEach(email => {
+                // Remove snippet if user didn't explicitly ask to read
+                // Keep only subject, from, date for listing
+                delete email.snippet
+              })
             }
           }
           
