@@ -6,6 +6,8 @@ const MAX_STORED_MESSAGES = 100 // Store last 100 messages
 
 export interface UserContext {
   name?: string
+  address?: string
+  workplace?: string
   preferences?: {
     language?: string
     timezone?: string
@@ -127,19 +129,85 @@ export function extractUserInfoFromMessages(messages: StoredMessage[]): Partial<
     /my name is (.+?)(?:\.|$|,|\s|$)/i,
     /i'm (.+?)(?:\.|$|,|\s|$)/i,
     /i am (.+?)(?:\.|$|,|\s|$)/i,
-    // Also catch variations with "ne" (what) - these are questions, not declarations
-    // But we'll skip these as they're asking, not telling
+  ]
+  
+  // Look for address mentions in messages
+  const addressPatterns = [
+    /adresim (.+?)(?:\.|$|,|\s|$)/i,
+    /benim adresim (.+?)(?:\.|$|,|\s|$)/i,
+    /ev adresim (.+?)(?:\.|$|,|\s|$)/i,
+    /yaşadığım yer (.+?)(?:\.|$|,|\s|$)/i,
+    /nerede yaşıyorum (.+?)(?:\.|$|,|\s|$)/i,
+    /my address is (.+?)(?:\.|$|,|\s|$)/i,
+    /i live at (.+?)(?:\.|$|,|\s|$)/i,
+    /i live in (.+?)(?:\.|$|,|\s|$)/i,
+    /my home address is (.+?)(?:\.|$|,|\s|$)/i,
+  ]
+  
+  // Look for workplace mentions in messages
+  const workplacePatterns = [
+    /iş yerim (.+?)(?:\.|$|,|\s|$)/i,
+    /benim iş yerim (.+?)(?:\.|$|,|\s|$)/i,
+    /çalıştığım yer (.+?)(?:\.|$|,|\s|$)/i,
+    /nerede çalışıyorum (.+?)(?:\.|$|,|\s|$)/i,
+    /ofisim (.+?)(?:\.|$|,|\s|$)/i,
+    /benim ofisim (.+?)(?:\.|$|,|\s|$)/i,
+    /i work at (.+?)(?:\.|$|,|\s|$)/i,
+    /i work in (.+?)(?:\.|$|,|\s|$)/i,
+    /my workplace is (.+?)(?:\.|$|,|\s|$)/i,
+    /my office is (.+?)(?:\.|$|,|\s|$)/i,
+    /i work for (.+?)(?:\.|$|,|\s|$)/i,
   ]
   
   for (const message of messages) {
     if (message.role === 'user') {
-      for (const pattern of namePatterns) {
-        const match = message.content.match(pattern)
-        if (match && match[1]) {
-          const name = match[1].trim()
-          if (name.length > 1 && name.length < 50) {
-            userInfo.name = name
-            break
+      // Extract name
+      if (!userInfo.name) {
+        for (const pattern of namePatterns) {
+          const match = message.content.match(pattern)
+          if (match && match[1]) {
+            const name = match[1].trim()
+            // Skip if it's a question (contains "ne" or "what")
+            if (!name.toLowerCase().includes('ne') && !name.toLowerCase().includes('what')) {
+              if (name.length > 1 && name.length < 50) {
+                userInfo.name = name
+                break
+              }
+            }
+          }
+        }
+      }
+      
+      // Extract address
+      if (!userInfo.address) {
+        for (const pattern of addressPatterns) {
+          const match = message.content.match(pattern)
+          if (match && match[1]) {
+            const address = match[1].trim()
+            // Skip if it's a question
+            if (!address.toLowerCase().includes('ne') && !address.toLowerCase().includes('what')) {
+              if (address.length > 3 && address.length < 200) {
+                userInfo.address = address
+                break
+              }
+            }
+          }
+        }
+      }
+      
+      // Extract workplace
+      if (!userInfo.workplace) {
+        for (const pattern of workplacePatterns) {
+          const match = message.content.match(pattern)
+          if (match && match[1]) {
+            const workplace = match[1].trim()
+            // Skip if it's a question
+            if (!workplace.toLowerCase().includes('ne') && !workplace.toLowerCase().includes('what')) {
+              if (workplace.length > 2 && workplace.length < 200) {
+                userInfo.workplace = workplace
+                break
+              }
+            }
           }
         }
       }

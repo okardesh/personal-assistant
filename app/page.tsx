@@ -56,11 +56,17 @@ export default function Home() {
       
       // Extract user info from messages and update context
       const extractedInfo = extractUserInfoFromMessages(messagesToSave)
-      if (extractedInfo.name) {
-        // Always update if we found a name (even if it's the same, to ensure it's saved)
-        const currentName = userContext?.name
-        if (!currentName || currentName !== extractedInfo.name) {
-          console.log('👤 Extracted user name:', extractedInfo.name)
+      if (extractedInfo.name || extractedInfo.address || extractedInfo.workplace) {
+        // Update if we found any new information
+        const hasNewInfo = 
+          (extractedInfo.name && (!userContext?.name || userContext.name !== extractedInfo.name)) ||
+          (extractedInfo.address && (!userContext?.address || userContext.address !== extractedInfo.address)) ||
+          (extractedInfo.workplace && (!userContext?.workplace || userContext.workplace !== extractedInfo.workplace))
+        
+        if (hasNewInfo) {
+          if (extractedInfo.name) console.log('👤 Extracted user name:', extractedInfo.name)
+          if (extractedInfo.address) console.log('👤 Extracted user address:', extractedInfo.address)
+          if (extractedInfo.workplace) console.log('👤 Extracted user workplace:', extractedInfo.workplace)
           updateUserContext(extractedInfo)
           setUserContext(prev => ({ ...prev, ...extractedInfo }))
         }

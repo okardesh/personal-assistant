@@ -21,6 +21,7 @@ import { fetchAppleCalendarEvents, addAppleCalendarEvent } from './appleCalendar
 import { fetchOutlookCalendarEvents, addOutlookCalendarEvent } from './outlookCalendar'
 import { searchNearbyEvents, searchGoogle } from './googleSearch'
 import { getBestRoute, Route } from './googleMaps'
+import { UserContext } from './storage'
 
 // Lazy initialize OpenAI client to avoid build-time errors
 let openaiInstance: OpenAI | null = null
@@ -278,7 +279,7 @@ const functions = [
 export async function chatWithOpenAI(
   messages: Message[],
   location?: Location | null,
-  userContext?: { name?: string; preferences?: any; metadata?: any } | null
+  userContext?: UserContext | null
 ): Promise<{ response: string; spotifyAction?: any }> {
   if (!process.env.OPENAI_API_KEY) {
     return { response: 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.' }
@@ -416,10 +417,27 @@ export async function chatWithOpenAI(
     // Build user context string for system message
     let userContextString = ''
     if (userContext) {
+      const userInfoParts: string[] = []
+      
       if (userContext.name) {
-        userContextString += `\n\nUSER INFORMATION:\n- User's name: ${userContext.name}\n- Always address the user by their name when appropriate. Remember their name and use it naturally in conversations.`
+        userInfoParts.push(`- User's name: ${userContext.name}`)
         console.log('👤 [OpenAI] User context includes name:', userContext.name)
       }
+      
+      if (userContext.address) {
+        userInfoParts.push(`- User's address: ${userContext.address}`)
+        console.log('👤 [OpenAI] User context includes address:', userContext.address)
+      }
+      
+      if (userContext.workplace) {
+        userInfoParts.push(`- User's workplace: ${userContext.workplace}`)
+        console.log('👤 [OpenAI] User context includes workplace:', userContext.workplace)
+      }
+      
+      if (userInfoParts.length > 0) {
+        userContextString += `\n\nUSER INFORMATION:\n${userInfoParts.join('\n')}\n- Always address the user by their name when appropriate. Remember their name, address, and workplace and use this information naturally in conversations.`
+      }
+      
       if (userContext.preferences) {
         const prefs = Object.entries(userContext.preferences)
           .map(([key, value]) => `- ${key}: ${value}`)
@@ -503,14 +521,16 @@ CURRENT DATE AND TIME:
 - Today is day ${now.getDay()} of the week (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)${userContextString}
 
 CRITICAL MEMORY INSTRUCTIONS:
-- You MUST remember the user's name if it was mentioned in previous messages or provided in USER INFORMATION above
+- You MUST remember the user's name, address, and workplace if they were mentioned in previous messages or provided in USER INFORMATION above
 - When the user asks "benim adim ne?" / "benim adım ne?" / "adım ne?" / "what is my name?" / "benim adimi hatirliyor musun?" / "do you remember my name?", you MUST answer with their name if you know it from USER INFORMATION above
-- If the user's name is in USER INFORMATION, you MUST say their name directly (e.g., "Adınız [NAME]" or "Your name is [NAME]")
-- NEVER say "I don't know your name" or "Üzgünüm, sizin adınızı bilmiyorum" if the name is provided in USER INFORMATION above
-- Always use the user's name naturally in conversations when you know it
+- When the user asks "adresim ne?" / "benim adresim ne?" / "nerede yaşıyorum?" / "what is my address?" / "where do I live?", you MUST answer with their address if you know it from USER INFORMATION above
+- When the user asks "nerede çalışıyorum?" / "iş yerim ne?" / "benim iş yerim ne?" / "where do I work?" / "what is my workplace?", you MUST answer with their workplace if you know it from USER INFORMATION above
+- If the user's information is in USER INFORMATION, you MUST say it directly (e.g., "Adınız [NAME]", "Adresiniz [ADDRESS]", "İş yeriniz [WORKPLACE]")
+- NEVER say "I don't know" or "bilmiyorum" if the information is provided in USER INFORMATION above
+- Always use the user's name, address, and workplace naturally in conversations when you know them
 - Remember information shared in previous messages in this conversation
 - Be consistent with information shared in previous messages
-- If the user's name is provided in USER INFORMATION above, you MUST use it and remember it throughout the conversation
+- If the user's information is provided in USER INFORMATION above, you MUST use it and remember it throughout the conversation
 
 CRITICAL: When answering questions about dates and days of the week:
 - ALWAYS calculate the day of the week using the CURRENT DATE as reference
