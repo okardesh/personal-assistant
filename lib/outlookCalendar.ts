@@ -136,7 +136,7 @@ export async function fetchOutlookCalendarEvents(
     for (const item of data.value || []) {
       // Microsoft Graph API returns dateTime in ISO 8601 format
       // The dateTime might be in UTC (ending with Z) or without timezone info
-      // We need to ensure it's treated as UTC and converted to local time
+      // We need to ensure it's treated as UTC and converted to Turkish time (Europe/Istanbul, UTC+3)
       let startDateTimeStr = item.start.dateTime
       let endDateTimeStr = item.end?.dateTime
       
@@ -150,33 +150,50 @@ export async function fetchOutlookCalendarEvents(
         endDateTimeStr = endDateTimeStr.split('.')[0] + 'Z'
       }
       
-      // Parse as UTC and convert to local time
-      const startDateTime = new Date(startDateTimeStr)
-      const endDateTime = endDateTimeStr ? new Date(endDateTimeStr) : undefined
+      // Parse as UTC
+      const startDateTimeUTC = new Date(startDateTimeStr)
+      const endDateTimeUTC = endDateTimeStr ? new Date(endDateTimeStr) : undefined
       
       // Get the timezone from the event if available (for logging/debugging)
       const eventTimeZone = item.start.timeZone || 'UTC'
       
-      // Convert to local time for display
-      // getFullYear(), getMonth(), etc. automatically return local time values
-      const year = startDateTime.getFullYear()
-      const month = String(startDateTime.getMonth() + 1).padStart(2, '0')
-      const day = String(startDateTime.getDate()).padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
+      // Convert to Turkish time (Europe/Istanbul, UTC+3)
+      // Use Intl.DateTimeFormat to format in Turkish timezone
+      const turkishTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
       
-      const hours = String(startDateTime.getHours()).padStart(2, '0')
-      const minutes = String(startDateTime.getMinutes()).padStart(2, '0')
-      const timeStr = `${hours}:${minutes}`
+      // Format start date/time in Turkish timezone
+      const startParts = turkishTimeFormatter.formatToParts(startDateTimeUTC)
+      const startYear = startParts.find(p => p.type === 'year')?.value || ''
+      const startMonth = startParts.find(p => p.type === 'month')?.value || ''
+      const startDay = startParts.find(p => p.type === 'day')?.value || ''
+      const startHour = startParts.find(p => p.type === 'hour')?.value || ''
+      const startMinute = startParts.find(p => p.type === 'minute')?.value || ''
       
-      console.log(`📧 [Outlook] Event "${item.subject}": original="${item.start.dateTime}", normalized="${startDateTimeStr}", timezone="${eventTimeZone}", UTC="${startDateTime.toISOString()}", local="${dateStr} ${timeStr}"`)
+      const dateStr = `${startYear}-${startMonth}-${startDay}`
+      const timeStr = `${startHour}:${startMinute}`
+      
+      // Create Date objects in Turkish timezone for filtering
+      // We'll create a new Date object that represents the Turkish time
+      // by parsing the formatted string
+      const turkishStartDate = new Date(`${startYear}-${startMonth}-${startDay}T${startHour}:${startMinute}:00+03:00`)
+      
+      console.log(`📧 [Outlook] Event "${item.subject}": original="${item.start.dateTime}", UTC="${startDateTimeUTC.toISOString()}", Turkish="${dateStr} ${timeStr}"`)
 
       events.push({
         title: item.subject || 'Untitled Event',
         date: dateStr,
         time: timeStr,
         calendar: 'work',
-        start: startDateTime, // Keep original Date object for filtering
-        end: endDateTime,
+        start: turkishStartDate, // Use Turkish timezone Date for filtering
+        end: endDateTimeUTC, // Keep UTC for end time (can be converted similarly if needed)
         description: item.bodyPreview,
         location: item.location?.displayName,
       })

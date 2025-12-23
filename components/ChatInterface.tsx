@@ -79,61 +79,67 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
     }
   }
 
-  // Check if user explicitly asked to read/speak
+  // Check if user explicitly asked to read/speak - reset on each new user message
   useEffect(() => {
     if (messages.length > 0) {
-      const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
-      if (lastUserMessage) {
-        const lowerContent = lastUserMessage.content.toLowerCase()
+      const lastMessage = messages[messages.length - 1]
+      
+      // If it's a user message, check if they asked to read
+      if (lastMessage.role === 'user') {
+        const lowerContent = lastMessage.content.toLowerCase()
         const readKeywords = ['oku', 'okur musun', 'okur musun?', 'okur musunuz', 'okur musunuz?', 
                              'read', 'read it', 'read aloud', 'speak', 'speak it', 'söyle', 'söyler misin']
         shouldSpeakRef.current = readKeywords.some(keyword => lowerContent.includes(keyword))
       }
+      // If it's an assistant message, we'll check shouldSpeakRef when speaking
     }
   }, [messages])
 
-  // Auto-speak assistant responses only if:
-  // 1. User explicitly asked to read ("oku", "okur musun", etc.), OR
-  // 2. autoSpeak toggle is enabled
+  // Auto-speak assistant responses ONLY if:
+  // 1. User explicitly asked to read ("oku", "okur musun", etc.) in the PREVIOUS user message, OR
+  // 2. autoSpeak toggle is manually enabled
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      const shouldSpeak = autoSpeak || shouldSpeakRef.current
       
+      // Only speak if it's an assistant message AND (autoSpeak is on OR user explicitly asked)
       if (
         lastMessage.role === 'assistant' &&
         lastMessage.content !== lastAssistantMessageRef.current &&
-        shouldSpeak &&
         !isLoading
       ) {
-        lastAssistantMessageRef.current = lastMessage.content
-        // Clean the text (remove markdown, links, emojis, etc. for better speech)
-        const cleanText = lastMessage.content
-          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove markdown links
-          .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
-          .replace(/\*([^*]+)\*/g, '$1') // Remove italic
-          .replace(/#{1,6}\s+/g, '') // Remove headers
-          .replace(/\n{2,}/g, '. ') // Replace multiple newlines with period
-          // Remove emojis (common emoji patterns)
-          .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, '') // Emoji surrogates
-          .replace(/[\u2600-\u27BF]/g, '') // Miscellaneous Symbols and Dingbats
-          .replace(/[\uFE00-\uFE0F]/g, '') // Variation Selectors
-          .replace(/[\u200D]/g, '') // Zero Width Joiner
-          .replace(/[\u200C]/g, '') // Zero Width Non-Joiner
-          .replace(/[\uFEFF]/g, '') // Zero Width No-Break Space
-          // Remove common emoji patterns (like 🎵, 📍, ⏰, etc.)
-          .replace(/[🎵📍⏰🎶🎤🎧🎨🎭🎪🎬🎯🎰🎱🎲🎳🎴🎵🎶🎷🎸🎹🎺🎻🎼🎽🎾🎿🏀🏁🏂🏃🏄🏅🏆🏇🏈🏉🏊🏋🏌🏍🏎🏏🏐🏑🏒🏓🏔🏕🏖🏗🏘🏙🏚🏛🏜🏝🏞🏟🏠🏡🏢🏣🏤🏥🏦🏧🏨🏩🏪🏫🏬🏭🏮🏯🏰🏱🏲🏳🏴🏵🏶🏷🏸🏹🏺🏻🏼🏽🏾🏿]/g, '')
-          .trim()
+        const shouldSpeak = autoSpeak || shouldSpeakRef.current
+        
+        if (shouldSpeak) {
+          lastAssistantMessageRef.current = lastMessage.content
+          // Clean the text (remove markdown, links, emojis, etc. for better speech)
+          const cleanText = lastMessage.content
+            .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove markdown links
+            .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+            .replace(/\*([^*]+)\*/g, '$1') // Remove italic
+            .replace(/#{1,6}\s+/g, '') // Remove headers
+            .replace(/\n{2,}/g, '. ') // Replace multiple newlines with period
+            // Remove emojis (common emoji patterns)
+            .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, '') // Emoji surrogates
+            .replace(/[\u2600-\u27BF]/g, '') // Miscellaneous Symbols and Dingbats
+            .replace(/[\uFE00-\uFE0F]/g, '') // Variation Selectors
+            .replace(/[\u200D]/g, '') // Zero Width Joiner
+            .replace(/[\u200C]/g, '') // Zero Width Non-Joiner
+            .replace(/[\uFEFF]/g, '') // Zero Width No-Break Space
+            // Remove common emoji patterns (like 🎵, 📍, ⏰, etc.)
+            .replace(/[🎵📍⏰🎶🎤🎧🎨🎭🎪🎬🎯🎰🎱🎲🎳🎴🎵🎶🎷🎸🎹🎺🎻🎼🎽🎾🎿🏀🏁🏂🏃🏄🏅🏆🏇🏈🏉🏊🏋🏌🏍🏎🏏🏐🏑🏒🏓🏔🏕🏖🏗🏘🏙🏚🏛🏜🏝🏞🏟🏠🏡🏢🏣🏤🏥🏦🏧🏨🏩🏪🏫🏬🏭🏮🏯🏰🏱🏲🏳🏴🏵🏶🏷🏸🏹🏺🏻🏼🏽🏾🏿]/g, '')
+            .trim()
 
-        if (cleanText) {
-          // Small delay to ensure UI is updated
-          setTimeout(() => {
-            speak(cleanText)
-            // Reset shouldSpeakRef after speaking (only for explicit requests, not autoSpeak)
-            if (shouldSpeakRef.current && !autoSpeak) {
-              shouldSpeakRef.current = false
-            }
-          }, 300)
+          if (cleanText) {
+            // Small delay to ensure UI is updated
+            setTimeout(() => {
+              speak(cleanText)
+              // Reset shouldSpeakRef after speaking (only for explicit requests, not autoSpeak)
+              if (shouldSpeakRef.current && !autoSpeak) {
+                shouldSpeakRef.current = false
+              }
+            }, 300)
+          }
         }
       }
     }
