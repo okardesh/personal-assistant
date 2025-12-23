@@ -173,6 +173,78 @@ export async function turnOffDevice(entityId: string): Promise<boolean> {
 }
 
 /**
+ * Turn off all lights in Home Assistant
+ * Uses the light.turn_off service without entity_id to turn off all lights
+ */
+export async function turnOffAllLights(): Promise<boolean> {
+  const config = getHomeAssistantConfig()
+  if (!config) {
+    console.error('❌ Home Assistant not configured')
+    return false
+  }
+
+  try {
+    const url = `${config.baseUrl}/api/services/light/turn_off`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}), // Empty body means all lights
+    })
+
+    if (response.ok) {
+      console.log('✅ All lights turned off')
+      return true
+    } else {
+      const errorText = await response.text()
+      console.error('❌ Failed to turn off all lights:', response.status, errorText)
+      return false
+    }
+  } catch (error) {
+    console.error('❌ Error turning off all lights:', error)
+    return false
+  }
+}
+
+/**
+ * Turn on all lights in Home Assistant
+ * Uses the light.turn_on service without entity_id to turn on all lights
+ */
+export async function turnOnAllLights(): Promise<boolean> {
+  const config = getHomeAssistantConfig()
+  if (!config) {
+    console.error('❌ Home Assistant not configured')
+    return false
+  }
+
+  try {
+    const url = `${config.baseUrl}/api/services/light/turn_on`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}), // Empty body means all lights
+    })
+
+    if (response.ok) {
+      console.log('✅ All lights turned on')
+      return true
+    } else {
+      const errorText = await response.text()
+      console.error('❌ Failed to turn on all lights:', response.status, errorText)
+      return false
+    }
+  } catch (error) {
+    console.error('❌ Error turning on all lights:', error)
+    return false
+  }
+}
+
+/**
  * Set brightness for a light
  */
 export async function setBrightness(entityId: string, brightness: number): Promise<boolean> {

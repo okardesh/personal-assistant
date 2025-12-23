@@ -6,6 +6,8 @@ import {
   searchDevices,
   turnOnDevice,
   turnOffDevice,
+  turnOffAllLights,
+  turnOnAllLights,
   setBrightness,
   getDeviceState,
   startVacuum,
@@ -249,13 +251,13 @@ const functions = [
   },
   {
     name: 'control_homekit_device',
-    description: 'Control smart home devices (lights, switches, thermostats, vacuum cleaners like Roomba, media players, etc.) through Home Assistant. Use this when the user asks to control home devices. Examples: "lambayı aç", "ışığı kapat", "Roomba\'yı başlat", "süpürgeyi durdur", "müziği çal", "TV\'yi kapat", "turn on the light", "start Roomba", "play music". First search for the device by name, then control it. For vacuum cleaners (Roomba), use start/pause/stop/return_to_base actions. For media players, use play/pause/stop/next_track/previous_track actions.',
+    description: 'Control smart home devices (lights, switches, thermostats, vacuum cleaners like Roomba, media players, etc.) through Home Assistant. Use this when the user asks to control home devices. Examples: "lambayı aç", "ışığı kapat", "bütün ışıkları söndür", "bütün ışıkları aç", "all lights off", "all lights on", "Roomba\'yı başlat", "süpürgeyi durdur", "müziği çal", "TV\'yi kapat", "turn on the light", "start Roomba", "play music". IMPORTANT: If user says "bütün ışıklar", "all lights", "tüm ışıklar", use deviceName="all lights" to control all lights at once. First search for the device by name, then control it. For vacuum cleaners (Roomba), use start/pause/stop/return_to_base actions. For media players, use play/pause/stop/next_track/previous_track actions.',
     parameters: {
       type: 'object',
       properties: {
         deviceName: {
           type: 'string',
-          description: 'The name of the device to control (e.g., "living room light", "bedroom lamp", "kitchen switch", "Roomba", "vacuum", "TV", "bedroom speaker"). If exact entity_id is known, use that instead.',
+          description: 'The name of the device to control (e.g., "living room light", "bedroom lamp", "kitchen switch", "Roomba", "vacuum", "TV", "bedroom speaker", "all lights" for all lights). If exact entity_id is known, use that instead. Use "all lights" when user says "bütün ışıklar", "all lights", "tüm ışıklar".',
         },
         action: {
           type: 'string',
@@ -1393,63 +1395,91 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
               let targetEntityId: string | undefined = entityId
               
               try {
+                // Check if user wants to control all lights
+                const isAllLights = deviceName && (
+                  deviceName.toLowerCase().includes('all lights') ||
+                  deviceName.toLowerCase().includes('bütün ışıklar') ||
+                  deviceName.toLowerCase().includes('tüm ışıklar') ||
+                  deviceName.toLowerCase() === 'all lights' ||
+                  deviceName.toLowerCase() === 'bütün ışıklar' ||
+                  deviceName.toLowerCase() === 'tüm ışıklar'
+                )
 
-                // If entity_id not provided, search for device by name
-                if (!targetEntityId && deviceName) {
-                  console.log(`🔍 Searching for device: ${deviceName}`)
-                  const devices = await searchDevices(deviceName)
-                  
-                  if (devices.length === 0) {
-                    functionResult = { 
-                      error: `Device "${deviceName}" not found. Please check the device name or use the exact entity_id.` 
-                    }
-                  } else if (devices.length === 1) {
-                    targetEntityId = devices[0].entity_id
-                    console.log(`✅ Found device: ${targetEntityId}`)
-                  } else {
-                    // Multiple devices found, use the first one or return list
-                    targetEntityId = devices[0].entity_id
-                    console.log(`⚠️ Multiple devices found, using: ${targetEntityId}`)
-                    functionResult = {
-                      warning: `Multiple devices found for "${deviceName}". Using: ${targetEntityId}`,
-                      availableDevices: devices.map(d => ({
-                        entity_id: d.entity_id,
-                        name: d.attributes.friendly_name || d.entity_id,
-                        state: d.state,
-                      })),
-                    }
-                  }
-                }
-
-                if (!targetEntityId) {
-                  functionResult = { error: 'Device name or entity_id is required' }
-                } else {
-                  // Perform the action
+                if (isAllLights && (action === 'turn_off' || action === 'turn_on')) {
+                  // Control all lights at once
+                  console.log(`💡 Controlling all lights: ${action}`)
                   let success = false
                   let message = ''
-
-                  // Determine device type from entity_id
-                  const domain = targetEntityId.split('.')[0]
                   
-                  switch (action) {
-                    case 'turn_on':
-                      success = await turnOnDevice(targetEntityId)
-                      message = `Turned on ${targetEntityId}`
-                      break
-
-                    case 'turn_off':
-                      success = await turnOffDevice(targetEntityId)
-                      message = `Turned off ${targetEntityId}`
-                      break
-
-                    case 'set_brightness':
-                      if (typeof brightness !== 'number' || brightness < 0 || brightness > 100) {
-                        functionResult = { error: 'Brightness must be a number between 0 and 100' }
-                        break
+                  if (action === 'turn_off') {
+                    success = await turnOffAllLights()
+                    message = success ? 'Tüm ışıklar kapatıldı' : 'Tüm ışıkları kapatırken hata oluştu'
+                  } else if (action === 'turn_on') {
+                    success = await turnOnAllLights()
+                    message = success ? 'Tüm ışıklar açıldı' : 'Tüm ışıkları açarken hata oluştu'
+                  }
+                  
+                  functionResult = {
+                    success,
+                    message,
+                  }
+                } else {
+                  // If entity_id not provided, search for device by name
+                  if (!targetEntityId && deviceName) {
+                    console.log(`🔍 Searching for device: ${deviceName}`)
+                    const devices = await searchDevices(deviceName)
+                    
+                    if (devices.length === 0) {
+                      functionResult = { 
+                        error: `Device "${deviceName}" not found. Please check the device name or use the exact entity_id.` 
                       }
-                      success = await setBrightness(targetEntityId, brightness)
-                      message = `Set brightness of ${targetEntityId} to ${brightness}%`
-                      break
+                    } else if (devices.length === 1) {
+                      targetEntityId = devices[0].entity_id
+                      console.log(`✅ Found device: ${targetEntityId}`)
+                    } else {
+                      // Multiple devices found, use the first one or return list
+                      targetEntityId = devices[0].entity_id
+                      console.log(`⚠️ Multiple devices found, using: ${targetEntityId}`)
+                      functionResult = {
+                        warning: `Multiple devices found for "${deviceName}". Using: ${targetEntityId}`,
+                        availableDevices: devices.map(d => ({
+                          entity_id: d.entity_id,
+                          name: d.attributes.friendly_name || d.entity_id,
+                          state: d.state,
+                        })),
+                      }
+                    }
+                  }
+
+                  if (!targetEntityId) {
+                    functionResult = { error: 'Device name or entity_id is required' }
+                  } else {
+                    // Perform the action
+                    let success = false
+                    let message = ''
+
+                    // Determine device type from entity_id
+                    const domain = targetEntityId.split('.')[0]
+                    
+                    switch (action) {
+                      case 'turn_on':
+                        success = await turnOnDevice(targetEntityId)
+                        message = `Turned on ${targetEntityId}`
+                        break
+
+                      case 'turn_off':
+                        success = await turnOffDevice(targetEntityId)
+                        message = `Turned off ${targetEntityId}`
+                        break
+
+                      case 'set_brightness':
+                        if (typeof brightness !== 'number' || brightness < 0 || brightness > 100) {
+                          functionResult = { error: 'Brightness must be a number between 0 and 100' }
+                          break
+                        }
+                        success = await setBrightness(targetEntityId, brightness)
+                        message = `Set brightness of ${targetEntityId} to ${brightness}%`
+                        break
 
                     case 'toggle':
                       // Get current state and toggle
@@ -1551,6 +1581,7 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
                     }
                   }
                 }
+              }
               } catch (error) {
                 console.error('Error controlling HomeKit device:', error)
                 const errorMessage = error instanceof Error ? error.message : 'Failed to control device'
