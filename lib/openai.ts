@@ -1407,21 +1407,28 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
 
                 if (isAllLights && (action === 'turn_off' || action === 'turn_on')) {
                   // Control all lights at once
-                  console.log(`💡 Controlling all lights: ${action}`)
-                  let success = false
-                  let message = ''
+                  console.log(`💡 [OpenAI] Controlling all lights: ${action}`)
+                  let result: { success: boolean; error?: string }
                   
                   if (action === 'turn_off') {
-                    success = await turnOffAllLights()
-                    message = success ? 'Tüm ışıklar kapatıldı' : 'Tüm ışıkları kapatırken hata oluştu'
+                    result = await turnOffAllLights()
                   } else if (action === 'turn_on') {
-                    success = await turnOnAllLights()
-                    message = success ? 'Tüm ışıklar açıldı' : 'Tüm ışıkları açarken hata oluştu'
+                    result = await turnOnAllLights()
+                  } else {
+                    result = { success: false, error: 'Bilinmeyen aksiyon' }
                   }
                   
-                  functionResult = {
-                    success,
-                    message,
+                  if (result.success) {
+                    functionResult = {
+                      success: true,
+                      message: action === 'turn_off' ? 'Tüm ışıklar kapatıldı' : 'Tüm ışıklar açıldı',
+                    }
+                  } else {
+                    functionResult = {
+                      success: false,
+                      error: result.error || (action === 'turn_off' ? 'Tüm ışıkları kapatırken hata oluştu' : 'Tüm ışıkları açarken hata oluştu'),
+                      message: result.error || (action === 'turn_off' ? 'Tüm ışıkları kapatırken hata oluştu' : 'Tüm ışıkları açarken hata oluştu'),
+                    }
                   }
                 } else {
                   // If entity_id not provided, search for device by name

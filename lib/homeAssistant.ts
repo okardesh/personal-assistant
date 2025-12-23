@@ -176,15 +176,18 @@ export async function turnOffDevice(entityId: string): Promise<boolean> {
  * Turn off all lights in Home Assistant
  * Uses the light.turn_off service without entity_id to turn off all lights
  */
-export async function turnOffAllLights(): Promise<boolean> {
+export async function turnOffAllLights(): Promise<{ success: boolean; error?: string }> {
   const config = getHomeAssistantConfig()
   if (!config) {
-    console.error('❌ Home Assistant not configured')
-    return false
+    const error = 'Home Assistant yapılandırılmamış. HOME_ASSISTANT_URL ve HOME_ASSISTANT_ACCESS_TOKEN environment variables\'larını kontrol edin.'
+    console.error('❌ [HomeAssistant]', error)
+    return { success: false, error }
   }
 
   try {
     const url = `${config.baseUrl}/api/services/light/turn_off`
+    console.log('💡 [HomeAssistant] Turning off all lights:', url)
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -194,17 +197,57 @@ export async function turnOffAllLights(): Promise<boolean> {
       body: JSON.stringify({}), // Empty body means all lights
     })
 
+    const responseText = await response.text()
+    console.log('💡 [HomeAssistant] Response status:', response.status, 'Response:', responseText.substring(0, 200))
+
     if (response.ok) {
-      console.log('✅ All lights turned off')
-      return true
+      console.log('✅ [HomeAssistant] All lights turned off successfully')
+      return { success: true }
     } else {
-      const errorText = await response.text()
-      console.error('❌ Failed to turn off all lights:', response.status, errorText)
-      return false
+      let errorMessage = `Home Assistant API hatası: ${response.status} ${response.statusText}`
+      try {
+        const errorData = JSON.parse(responseText)
+        if (errorData.message) {
+          errorMessage = errorData.message
+        }
+      } catch {
+        // If response is not JSON, use the text as error
+        if (responseText) {
+          errorMessage = responseText.substring(0, 200)
+        }
+      }
+      
+      console.error('❌ [HomeAssistant] Failed to turn off all lights:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        url,
+      })
+      
+      // Provide user-friendly error messages
+      if (response.status === 401) {
+        errorMessage = 'Home Assistant yetkilendirme hatası. Token\'ın geçerli olduğundan emin olun.'
+      } else if (response.status === 404) {
+        errorMessage = 'Home Assistant servisi bulunamadı. URL\'nin doğru olduğundan emin olun.'
+      } else if (response.status === 500) {
+        errorMessage = 'Home Assistant sunucu hatası. Home Assistant log\'larını kontrol edin.'
+      }
+      
+      return { success: false, error: errorMessage }
     }
   } catch (error) {
-    console.error('❌ Error turning off all lights:', error)
-    return false
+    const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+    console.error('❌ [HomeAssistant] Error turning off all lights:', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+    
+    let userFriendlyError = 'Tüm ışıkları kapatırken bir hata oluştu.'
+    if (errorMessage.includes('fetch')) {
+      userFriendlyError = 'Home Assistant\'a bağlanılamıyor. URL\'nin doğru olduğundan ve Home Assistant\'ın çalıştığından emin olun.'
+    }
+    
+    return { success: false, error: userFriendlyError }
   }
 }
 
@@ -212,15 +255,18 @@ export async function turnOffAllLights(): Promise<boolean> {
  * Turn on all lights in Home Assistant
  * Uses the light.turn_on service without entity_id to turn on all lights
  */
-export async function turnOnAllLights(): Promise<boolean> {
+export async function turnOnAllLights(): Promise<{ success: boolean; error?: string }> {
   const config = getHomeAssistantConfig()
   if (!config) {
-    console.error('❌ Home Assistant not configured')
-    return false
+    const error = 'Home Assistant yapılandırılmamış. HOME_ASSISTANT_URL ve HOME_ASSISTANT_ACCESS_TOKEN environment variables\'larını kontrol edin.'
+    console.error('❌ [HomeAssistant]', error)
+    return { success: false, error }
   }
 
   try {
     const url = `${config.baseUrl}/api/services/light/turn_on`
+    console.log('💡 [HomeAssistant] Turning on all lights:', url)
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -230,17 +276,57 @@ export async function turnOnAllLights(): Promise<boolean> {
       body: JSON.stringify({}), // Empty body means all lights
     })
 
+    const responseText = await response.text()
+    console.log('💡 [HomeAssistant] Response status:', response.status, 'Response:', responseText.substring(0, 200))
+
     if (response.ok) {
-      console.log('✅ All lights turned on')
-      return true
+      console.log('✅ [HomeAssistant] All lights turned on successfully')
+      return { success: true }
     } else {
-      const errorText = await response.text()
-      console.error('❌ Failed to turn on all lights:', response.status, errorText)
-      return false
+      let errorMessage = `Home Assistant API hatası: ${response.status} ${response.statusText}`
+      try {
+        const errorData = JSON.parse(responseText)
+        if (errorData.message) {
+          errorMessage = errorData.message
+        }
+      } catch {
+        // If response is not JSON, use the text as error
+        if (responseText) {
+          errorMessage = responseText.substring(0, 200)
+        }
+      }
+      
+      console.error('❌ [HomeAssistant] Failed to turn on all lights:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        url,
+      })
+      
+      // Provide user-friendly error messages
+      if (response.status === 401) {
+        errorMessage = 'Home Assistant yetkilendirme hatası. Token\'ın geçerli olduğundan emin olun.'
+      } else if (response.status === 404) {
+        errorMessage = 'Home Assistant servisi bulunamadı. URL\'nin doğru olduğundan emin olun.'
+      } else if (response.status === 500) {
+        errorMessage = 'Home Assistant sunucu hatası. Home Assistant log\'larını kontrol edin.'
+      }
+      
+      return { success: false, error: errorMessage }
     }
   } catch (error) {
-    console.error('❌ Error turning on all lights:', error)
-    return false
+    const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+    console.error('❌ [HomeAssistant] Error turning on all lights:', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+    
+    let userFriendlyError = 'Tüm ışıkları açarken bir hata oluştu.'
+    if (errorMessage.includes('fetch')) {
+      userFriendlyError = 'Home Assistant\'a bağlanılamıyor. URL\'nin doğru olduğundan ve Home Assistant\'ın çalıştığından emin olun.'
+    }
+    
+    return { success: false, error: userFriendlyError }
   }
 }
 
