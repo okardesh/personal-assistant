@@ -17,10 +17,11 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
-  const [autoSpeak, setAutoSpeak] = useState(true)
+  const [autoSpeak, setAutoSpeak] = useState(false) // Default: don't auto-speak
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastAssistantMessageRef = useRef<string>('')
+  const shouldSpeakRef = useRef<boolean>(false) // Track if user explicitly asked to read
 
   // Voice recognition
   const { isListening, isSupported: isVoiceSupported, toggleListening, stopListening } = useVoiceRecognition({
@@ -78,14 +79,31 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
     }
   }
 
-  // Auto-speak assistant responses
+  // Check if user explicitly asked to read/speak
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
+      if (lastUserMessage) {
+        const lowerContent = lastUserMessage.content.toLowerCase()
+        const readKeywords = ['oku', 'okur musun', 'okur musun?', 'okur musunuz', 'okur musunuz?', 
+                             'read', 'read it', 'read aloud', 'speak', 'speak it', 'söyle', 'söyler misin']
+        shouldSpeakRef.current = readKeywords.some(keyword => lowerContent.includes(keyword))
+      }
+    }
+  }, [messages])
+
+  // Auto-speak assistant responses only if:
+  // 1. User explicitly asked to read ("oku", "okur musun", etc.), OR
+  // 2. autoSpeak toggle is enabled
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
+      const shouldSpeak = autoSpeak || shouldSpeakRef.current
+      
       if (
         lastMessage.role === 'assistant' &&
         lastMessage.content !== lastAssistantMessageRef.current &&
-        autoSpeak &&
+        shouldSpeak &&
         !isLoading
       ) {
         lastAssistantMessageRef.current = lastMessage.content
@@ -111,6 +129,10 @@ export default function ChatInterface({ messages, onSendMessage }: ChatInterface
           // Small delay to ensure UI is updated
           setTimeout(() => {
             speak(cleanText)
+            // Reset shouldSpeakRef after speaking (only for explicit requests, not autoSpeak)
+            if (shouldSpeakRef.current && !autoSpeak) {
+              shouldSpeakRef.current = false
+            }
           }, 300)
         }
       }
