@@ -482,7 +482,7 @@ export async function chatWithOpenAI(
 - Calendar: Check their PERSONAL calendar events (ONLY when they explicitly mention "takvimim", "randevularım", "toplantılarım", "my calendar", "my appointments")
 - Calendar: Add events to their calendar when they ask (e.g., "bunu takvimime ekle", "add to calendar", "takvime ekle")
 - Email: Check their inbox and list emails (subject, sender, date). DO NOT read or summarize emails unless the user explicitly asks "okur musun", "oku", "read", "özetle", or "summarize"
-- Weather: Get current weather information for their location or any city
+- Weather: Get current weather information for their location or any city. For weather queries, if location is not available, the system will automatically request location permission - DO NOT explain that location permission is needed, just use get_weather function and the system will handle it. If user provides a city name, use that instead.
 - Location: You have access to the user's current location if they grant permission
 - Spotify: Play music, control playback (play, pause, next, previous, volume). Use play_spotify_track when user asks to play music (e.g., "Spotify'da şarkı çal", "müzik aç", "play [song name]"). Use control_spotify_playback for playback control (e.g., "müziği durdur", "pause", "next song").
 - Directions: Get directions and travel time to places. Use get_directions when user asks how to get somewhere or travel time (e.g., "Kadıköy'e nasıl giderim", "Taksim'e ne kadar sürer", "how to get to X"). IMPORTANT: The user's current location will be automatically used as the origin - you do NOT need to ask for location permission. If location is not available, the function will return an error, but you should still try to use it if the user asks for directions.
@@ -554,7 +554,7 @@ When adding events to calendar:
 - Default to "personal" calendar unless user specifies "work" calendar
 - If end time is not specified, default to 1 hour after start time
 
-    When the user asks about their calendar, emails, or weather, use the appropriate function. For weather queries, use the user's location coordinates if available, otherwise ask for a city name or use the get_weather function with coordinates.
+    When the user asks about their calendar, emails, or weather, use the appropriate function. For weather queries, use the user's location coordinates if available. If location is not available, the system will automatically request location permission - DO NOT explain that location permission is needed, just use get_weather function and the system will handle it. If user provides a city name, use that instead.
 
     CRITICAL EMAIL RULES:
     - DO NOT read, summarize, or show email content unless the user explicitly asks with words like: "okur musun", "oku", "read", "özetle", "summarize", "içeriğini göster", "show content"
@@ -1010,7 +1010,9 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
           if (weather) {
             functionResult = { weather }
           } else {
-            functionResult = { error: 'Could not fetch weather information. Please provide location permissions or specify a city name.' }
+            // If location is not available, return null - the system will automatically request location permission
+            // The AI should NOT explain - it should just wait or retry
+            functionResult = { weather: null, needsLocation: true }
           }
         } else if (functionName === 'search_nearby_events') {
           const searchLat = functionArgs.latitude || location?.latitude
@@ -1220,7 +1222,13 @@ Note: Email ID not available, but you MUST create a comprehensive summary based 
             } else if (location) {
               weather = await getWeather(location.latitude, location.longitude)
             }
-            functionResult = weather ? { weather } : { error: 'Could not fetch weather' }
+            if (weather) {
+              functionResult = { weather }
+            } else {
+              // If location is not available, return null - the system will automatically request location permission
+              // The AI should NOT explain - it should just wait or retry
+              functionResult = { weather: null, needsLocation: true }
+            }
           } else if (functionName === 'play_spotify_track') {
             const query = functionArgs.query
             if (!query) {
