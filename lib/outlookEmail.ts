@@ -116,15 +116,17 @@ export async function fetchOutlookEmails(options: { unread?: boolean; limit?: nu
       const fromName = item.from?.emailAddress?.name || fromEmail
       const from = fromName !== fromEmail ? `${fromName} <${fromEmail}>` : fromEmail
       
-      // Get body preview or content
-      const snippet = item.bodyPreview || item.body?.content || ''
+      // DO NOT include snippet by default - only include when user explicitly asks to read
+      // This prevents AI from automatically reading emails
+      // snippet will be added later in openai.ts if user explicitly asks to read
       
       emails.push({
         id: item.id,
         subject: item.subject || '(No Subject)',
         from: from,
         date: receivedDate.toISOString(),
-        snippet: snippet.substring(0, 1000), // Limit snippet length
+        // DO NOT include snippet here - only add when user explicitly asks to read
+        // snippet: undefined, // Will be added later if user asks to read
         unread: !item.isRead, // Outlook uses isRead (true = read, false = unread)
       })
     }
@@ -139,6 +141,44 @@ export async function fetchOutlookEmails(options: { unread?: boolean; limit?: nu
       console.error('❌ [Outlook Email] Error stack:', error.stack)
     }
     return []
+  }
+}
+
+export async function fetchOutlookEmailBody(emailId: string): Promise<string | null> {
+  console.log('📧 [Outlook Email] Fetching email body:', emailId)
+  const accessToken = await getMicrosoftAccessToken()
+
+  if (!accessToken) {
+    console.warn('⚠️ [Outlook Email] No access token available')
+    return null
+  }
+
+  try {
+    // Microsoft Graph API endpoint for getting email body
+    const graphUrl = `https://graph.microsoft.com/v1.0/me/messages/${emailId}?$select=body,bodyPreview`
+    
+    const response = await fetch(graphUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ [Outlook Email] Failed to fetch email body:', response.status, response.statusText, errorText)
+      return null
+    }
+
+    const data = await response.json()
+    // Return body content or bodyPreview as fallback
+    const body = data.body?.content || data.bodyPreview || ''
+    console.log('✅ [Outlook Email] Email body fetched:', { length: body.length })
+    return body
+  } catch (error) {
+    console.error('❌ [Outlook Email] Error fetching email body:', error)
+    return null
   }
 }
 

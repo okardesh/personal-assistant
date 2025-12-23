@@ -848,22 +848,23 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
           
           // ONLY fetch email body if user explicitly asks to read/summarize
           // DO NOT automatically read emails - user must explicitly request it
+          // CRITICAL: Only check the LAST user message, not all messages
+          // This prevents false positives from previous conversation context
           const userMessage = messages[messages.length - 1]?.content || ''
-          const allMessages = messages.map(m => m.content || '').join(' ').toLowerCase()
-          const needsSummary = userMessage.toLowerCase().includes('özetle') || 
-                              userMessage.toLowerCase().includes('summarize') ||
-                              userMessage.toLowerCase().includes('özet') ||
-                              userMessage.toLowerCase().includes('oku') ||
-                              userMessage.toLowerCase().includes('okur musun') ||
-                              userMessage.toLowerCase().includes('read') ||
-                              userMessage.toLowerCase().includes('içeriğini göster') ||
-                              userMessage.toLowerCase().includes('show content') ||
-                              allMessages.includes('özetle') ||
-                              allMessages.includes('summarize') ||
-                              allMessages.includes('özet') ||
-                              allMessages.includes('oku') ||
-                              allMessages.includes('okur musun') ||
-                              allMessages.includes('read')
+          const lowerUserMessage = userMessage.toLowerCase()
+          
+          // Only check for explicit read requests in the CURRENT message
+          // DO NOT check allMessages - that causes false positives
+          const needsSummary = lowerUserMessage.includes('özetle') || 
+                              lowerUserMessage.includes('summarize') ||
+                              lowerUserMessage.includes('özet') ||
+                              lowerUserMessage.includes('oku') ||
+                              lowerUserMessage.includes('okur musun') ||
+                              lowerUserMessage.includes('read') ||
+                              lowerUserMessage.includes('içeriğini göster') ||
+                              lowerUserMessage.includes('show content') ||
+                              lowerUserMessage.includes('içeriğini oku') ||
+                              lowerUserMessage.includes('read content')
           
           console.log('📧 [OpenAI] Summary check', { 
             needsSummary, 
@@ -901,10 +902,11 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
               console.log('📧 [OpenAI] ✅ Fetching email body', { 
                 emailId: latestEmail.id, 
                 subject: latestEmail.subject,
-                reason: needsSummary ? 'summary requested' : 'latest email, no unread'
+                reason: 'user explicitly asked to read/summarize'
               })
-              // Import fetchICloudEmailBody dynamically to avoid circular dependency
+              // Import email body fetchers dynamically to avoid circular dependency
               const { fetchICloudEmailBody } = await import('./icloudEmail')
+              const { fetchOutlookEmailBody } = await import('./outlookEmail')
               try {
                 console.log('📧 [OpenAI] Starting email body fetch', { 
                   emailId: latestEmail.id, 
@@ -912,7 +914,6 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                   timestamp: new Date().toISOString()
                 })
                 // Add timeout for email body fetch
-                const bodyPromise = fetchICloudEmailBody(latestEmail.id)
                 const timeoutPromise = new Promise<string | null>((resolve) => {
                   setTimeout(() => {
                     console.warn('📧 [OpenAI] ⏰ Email body fetch timeout after 15 seconds')
@@ -921,6 +922,12 @@ Be conversational, helpful, and concise. If you need to call a function, do so.`
                 })
                 
                 console.log('📧 [OpenAI] Waiting for email body...')
+                // Fetch body based on email ID prefix
+                // iCloud emails have "icloud-" prefix, Outlook emails have no prefix (just the ID)
+                const isICloudEmail = latestEmail.id.startsWith('icloud-')
+                const bodyPromise = isICloudEmail
+                  ? fetchICloudEmailBody(latestEmail.id)
+                  : fetchOutlookEmailBody(latestEmail.id)
                 const emailBody = await Promise.race([bodyPromise, timeoutPromise])
                 console.log('📧 [OpenAI] Email body fetch completed', { 
                   hasBody: !!emailBody,
