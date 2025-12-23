@@ -480,7 +480,7 @@ export function useVoiceRecognition({
           }
         }, backoffDelay)
         return
-      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= maxNetworkErrors) {
+      } else if (lastErrorRef.current === 'network' && networkErrorCountRef.current >= 3) {
         console.error('🎤 [VoiceRecognition] Too many network errors, not restarting', {
           errorCount: networkErrorCountRef.current,
         })
